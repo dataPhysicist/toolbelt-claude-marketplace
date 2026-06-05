@@ -1,17 +1,14 @@
 # Apexti Toolbelt — Claude marketplace
 
-A one-plugin marketplace that connects a fresh Claude to a governed **Toolbelt** org with a
-friendly first-run. It ships the **`toolbelt`** plugin, whose `/toolbelt:get-started` flow forks
-by who you are — a new operator (genesis), a returning operator with assistants, or an end-user
-joining the org an operator already built for them (consumer).
+A one-plugin marketplace that connects a Claude client to a governed **Toolbelt** org and makes the
+org's **agents** usable right inside Claude. Install it, authorize Toolbelt once, and Claude can route
+your requests to the right agent — each agent runs in Toolbelt with its own memory, tools, and
+guardrails. **Claude is the front door; Toolbelt is the brain.**
 
-In this first release the onboarding logic runs against a **self-contained local stub** (no login,
-no backend) so you can feel the experience in a clean Claude instance. See
-[`REAL-CONNECTOR.md`](./REAL-CONNECTOR.md) to point it at live Toolbelt.
+Design law: **Claude *uses* an org's agents; Toolbelt is where you *build* them.** Provisioning happens
+in Toolbelt, not in chat.
 
-## Install in a fresh Claude
-
-Requires Node.js on the machine (the stub MCP server runs locally).
+## Install in a Claude client
 
 ```text
 /plugin marketplace add YOUR_GITHUB_USERNAME/toolbelt-claude-marketplace
@@ -19,37 +16,37 @@ Requires Node.js on the machine (the stub MCP server runs locally).
 /toolbelt:get-started
 ```
 
-Then walk the paths:
+On first run the plugin connects to Toolbelt, lists your org's agents, and tells you to just ask —
+it delegates each request to the best-fit agent and returns that agent's answer.
 
-- **Genesis** (new operator): pick `genesis` → it provisions a starter org, connects Gmail, runs a
-  Meeting-Prep playbook, schedules a weekly branded report.
-- **Returning** (operator with assistants): pick `returning` → it discovers your assistants and wires
-  the report.
-- **Consumer** (operator's customer): simulate the branded install with an invite —
-  install, then say "set up Toolbelt with invite sterling-org-7f3a" — and you're bound to the
-  operator's org with nothing to configure.
-
-Run `/reload-plugins` after any local edits.
+For the **desktop app**, see [`DESKTOP.md`](./DESKTOP.md) (custom connector + Project, or plugin install).
 
 ## What's inside
 
 ```
 .claude-plugin/marketplace.json          # the marketplace catalog
-plugins/toolbelt-get-started/            # the plugin
+plugins/toolbelt-get-started/            # the plugin (v0.3 — router model)
   ├── .claude-plugin/plugin.json
-  ├── .mcp.json                          # → local stub today; remote Toolbelt for production
-  ├── skills/get-started/SKILL.md        # /toolbelt:get-started
+  ├── .mcp.json                          # remote Toolbelt MCP connector (org-scoped by URL param)
+  ├── skills/get-started/SKILL.md        # connect -> list agents -> delegate (create_sub_chat)
   ├── agents/onboarding-guide.md
-  ├── servers/onboard-stub.mjs           # zero-dependency stub of the onboard() state machine
-  └── examples/sterling-marketplace.json # the branded operator catalog the generator emits
+  ├── servers/onboard-stub.mjs           # dev/demo stub only (not the product path)
+  └── examples/sterling-marketplace.json # branded operator catalog (org-pinned)
 ```
+
+## Org-scoping (branded per-customer installs)
+
+Point the connector at a specific org by URL param, e.g.
+`https://toolbelt.apexti.com/mcp?org=<ORG_ID>`. The generator emits one branded plugin per customer
+org (see `examples/sterling-marketplace.json`). The org id is a routing key, not a credential — the
+user still authenticates and Toolbelt authorizes their membership.
 
 ## Roadmap
 
-1. **Stub marketplace** (this repo) — feel the first-run in a clean instance. ✅
-2. **Live connector** — point `.mcp.json` at `https://toolbelt.apexti.com/mcp`; onboarding orchestrates
-   the real Toolbelt actions (`create_assistant`, `get_service_connect_url`, `enable_service`, …),
-   already verified working. See `REAL-CONNECTOR.md`.
-3. **Real `onboard` endpoint** — move the logic server-side so the plugin stays thin and the same flow
-   re-emits for ChatGPT/Gemini. See the onboard endpoint spec.
-4. **Marketplace generator** — auto-emit per-operator branded catalogs (Sterling's own marketplace).
+1. **Router plugin** (this) — connect + list + delegate to the org's agents. ✅ built
+2. **Prove the delegation round-trip** end to end inside a real Claude session (dispatch is verified;
+   async result retrieval needs a client chat context — confirm in desktop).
+3. **Generator** — auto-emit a branded connector + roster skill per org.
+4. **Optional later** — per-assistant toggle connectors, org-as-Claude-Project templates.
+
+See the EVALUATION and plan docs for the full rationale.

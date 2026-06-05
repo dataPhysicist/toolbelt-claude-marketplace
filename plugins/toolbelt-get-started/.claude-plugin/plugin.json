@@ -1,7 +1,7 @@
 {
   "name": "toolbelt",
-  "description": "Connect Claude to your governed Toolbelt org (live remote connector) — set up assistants, services, and playbooks in one conversation.",
-  "version": "0.2.0",
+  "description": "Connect Claude to your governed Toolbelt org and route work to its agents — your org's agents become usable in Claude.",
+  "version": "0.3.0",
   "author": {
     "name": "Apexti"
   },
