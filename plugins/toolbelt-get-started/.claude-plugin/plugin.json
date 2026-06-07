@@ -1,9 +1,24 @@
 {
   "name": "toolbelt",
   "description": "Connect Claude to your governed Toolbelt org and route work to its agents — your org's agents become usable in Claude.",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "author": {
     "name": "Apexti"
   },
-  "homepage": "https://apexti.com/toolbelt"
+  "homepage": "https://apexti.com/toolbelt",
+  "userConfig": {
+    "toolbelt_workspace_id": {
+      "type": "string",
+      "title": "Hub workspace (assistant) ID",
+      "description": "Your Toolbelt hub workspace (assistant) ID — the agent whose endpoint lists your org roster and routes work.",
+      "required": true
+    },
+    "toolbelt_api_key": {
+      "type": "string",
+      "title": "Toolbelt API key",
+      "description": "Your Toolbelt API key. Entered at install, stored securely (system keychain), never committed to the repo.",
+      "sensitive": true,
+      "required": true
+    }
+  }
 }

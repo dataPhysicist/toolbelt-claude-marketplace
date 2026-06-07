@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "toolbelt": {
-      "url": "https://toolbelt.apexti.com/mcp",
-      "transport": "http"
+      "type": "http",
+      "url": "https://toolbelt.apexti.com/api/workspaces/${user_config.toolbelt_workspace_id}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${user_config.toolbelt_api_key}"
+      }
     }
   }
 }
