@@ -55,7 +55,10 @@ the floor allows).
 `manage_delegations { action: "create", targetAssistantId: "<agent's workspace id>", content: "<task>",
 provider: "<provider>", model: "<model>" }` → capture the returned **`correlationId`**.
 Toolbelt **validates** the requested model and falls back if it isn't allowed — your choice is a
-*preference*, not a command. Omit `provider`/`model` to use the agent's own default.
+*preference*, not a command. Omit `provider`/`model` to use the agent's own default. You do **not** need
+to establish a connection first — delegate directly with `targetAssistantId`. Ignore
+`manage_assistant_connections` / `manage_workflows`; those are org build-time setup done in Toolbelt, not
+routing steps.
 
 ### 5. Retrieve by correlationId
 `manage_delegations { action: "wait", correlationId: "<from step 4>", timeoutSeconds: 60 }` → the answer

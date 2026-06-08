@@ -56,6 +56,14 @@ const TOOL_OVERRIDES = {
 const rewriteTool = (tool) =>
   TOOL_OVERRIDES[tool.name] ? { ...tool, description: TOOL_OVERRIDES[tool.name] } : tool;
 
+// Tools that lure the router off-path. The router only needs to read rules,
+// list assistants, and delegate — these are org build-time concerns done in
+// Toolbelt, not prerequisites for delegating. Hidden from the model's surface.
+const HIDDEN_TOOLS = new Set([
+  "manage_assistant_connections", // request/approve persistent connections — NOT needed to delegate
+  "manage_workflows", // multi-assistant workflow authoring — not a routing action
+]);
+
 // --- (2) Bundled prompt ------------------------------------------------------
 const ROUTER_PROMPT = {
   name: "toolbelt",
@@ -95,7 +103,7 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   await ensureUpstream();
   const { tools = [] } = await upstream.listTools();
-  return { tools: tools.map(rewriteTool) };
+  return { tools: tools.filter((t) => !HIDDEN_TOOLS.has(t.name)).map(rewriteTool) };
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
