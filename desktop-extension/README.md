@@ -2,55 +2,53 @@
 
 A native **Claude Desktop** install for the Toolbelt router. Stores your API key in the **OS keychain**,
 sends it as an `Authorization: Bearer` header (never in a URL), and **carries the router behavior itself**
-so there's (almost) nothing to paste.
+so there's nothing to paste.
 
 ## How it works — a thin local bridge (`bridge.js`)
 Desktop Extensions run a **local stdio** server; there's no remote-HTTP server type. So `bridge.js` is a
-small MCP server (built on `@modelcontextprotocol/sdk`) that connects *out* to the remote Toolbelt MCP
-endpoint and proxies traffic, while adding three things on top:
+small MCP server (on `@modelcontextprotocol/sdk`) that connects *out* to the remote Toolbelt MCP endpoint
+and proxies traffic, adding:
 
 ```
 Claude Desktop ──stdio──> bridge.js ──HTTPS + Bearer──> toolbelt.apexti.com/api/workspaces/<id>/mcp
-                           │  allowlists tools (toolbelt, manage_delegations, read_storage_file, toolbelt_help)
-                           │  rewrites tool descriptions (manage_delegations → wait/correlationId)
-                           │  serves a bundled `toolbelt` prompt (>>toolbelt) = full router guidance
-                           └  sets server `instructions` (honored by Claude Code/VS Code; Desktop ignores)
+   │  one ask_<agent> tool per org assistant (toggle agents on/off; delegate→wait handled internally)
+   │  curated core tools (read_storage_file, toolbelt, toolbelt_help, manage_delegations) — rest hidden
+   │  manage_delegations description rewritten (prefer ask_<agent>; wait/correlationId, never sleep)
+   │  bundled `toolbelt` prompt (>>toolbelt) = full router guidance
+   └  server `instructions` (honored by Claude Code/VS Code; Desktop ignores)
 ```
 
-0. **Curated tool surface (allowlist).** Only the router essentials reach the model
-   (`ALLOWED_TOOLS` in `bridge.js`): `toolbelt` (its `list_assistants` action), `manage_delegations`,
-   `read_storage_file`, `toolbelt_help`. Everything else Toolbelt exposes is hidden, so the model can't
-   wander into storage writes, workflows, connection setup, or service tools. Edit the set to grant more.
+1. **Per-agent tools.** At connect, the bridge calls `list_assistants` and surfaces each agent as its own
+   **`ask_<name>`** tool (friendly name; description = the agent's purpose). The user can **toggle
+   individual agents on/off** in Settings → Extensions. Calling `ask_<agent>({ task, model? })` runs the
+   `create → wait` delegation internally and returns the agent's answer — no correlationId handling for
+   the model. If the roster can't be parsed, it falls back to exposing `manage_delegations`.
+2. **Curated surface.** Only the core tools above pass through; storage writes, `duckdb_*`, `wrench_*`,
+   service tools, and connection/workflow setup are hidden so the model can't wander.
+3. **Org name.** Optional `Org name` field at install; if left blank the router learns it at runtime via
+   `toolbelt list_organizations`. Used so Claude refers to your org by name.
 
-1. **Tool-description rewrite (automatic, every client).** On `tools/list`, the bridge rewrites
-   `manage_delegations` so the model retrieves results with `wait`/`status` by `correlationId` instead of
-   the built-in `sleep`/`get_pending_sub_chats` that fail for an external client. This is the key fix and
-   needs no user action. See `TOOL_OVERRIDES` in `bridge.js`.
-2. **Bundled prompt.** `>>toolbelt` (or the prompt menu) inserts the full router guidance from
-   `router-instructions.md` — replaces pasting a skill file into a Project.
-3. **Server `instructions`.** Best-effort hint; injected by clients that support it. *Verified: Claude
-   Desktop does **not** inject it* (see the probe in `../experiments/instructions-probe/`), which is why
-   #1 and #2 carry the behavior instead.
-
-## Install (unpacked — for testing today)
-`node_modules/` (the SDK) must be present.
-1. `cd desktop-extension && npm install`
-2. Claude Desktop → **Settings → Extensions → Extension Developer → Install Unpacked Extension** →
-   select this folder. (Folder picker greys out files — select the **folder**, or package a `.mcpb` and
-   use **Install Extension**; see below.)
-3. Enter an **org name** (optional label), your **hub workspace ID**, and **API key** when prompted.
-4. Say **"connect Toolbelt"** (or run `>>toolbelt` first to load the full guidance).
-
-## Package (.mcpb — for distribution / a clean Install Extension flow)
+## Install (single-file .mcpb — recommended)
 ```bash
-npm install            # vendor the SDK into node_modules/
-npx @anthropic-ai/mcpb pack   # → toolbelt-0.7.0.mcpb (bundles node_modules)
+npm install                  # vendor the SDK into node_modules/
+npx @anthropic-ai/mcpb pack  # → desktop-extension.mcpb
 ```
-Distribute the `.mcpb`; users install via **Settings → Extensions → Install Extension** (single file → a
-normal Open button).
+Then Claude Desktop → **Settings → Extensions → Install Extension** → pick the `.mcpb` → enter org name
+(optional), hub workspace ID, and API key. Each agent then appears as an `ask_<name>` tool you can toggle.
+
+## Per-org branded build (names it in the Settings list)
+Claude's Settings-list label is the manifest `display_name` (static per build). To get a per-org name
+there, build a branded copy:
+```bash
+node pack-org.mjs --org "Acme Corp" --workspace <hub-workspace-id>   # → acme-corp.mcpb
+```
+- Stamps `display_name` → **"Toolbelt — Acme Corp"** (shows named in Settings).
+- Bakes the org name and (with `--workspace`) the workspace ID, so the user only enters their **API key**.
+- Restores the base `manifest.json` afterward. Omit `--workspace` to keep that field at install.
 
 ## Status
-- Verified locally: bridge starts, serves `instructions` + the `toolbelt` prompt, and fails gracefully
-  when the upstream is unreachable.
-- **Needs a live test:** upstream proxying + the `manage_delegations` rewrite against a real Toolbelt
-  endpoint with your key. Watch the extension logs on first `list_assistants` / delegation.
+- Verified locally: bridge handshake, `instructions` + bundled prompt, org-name injection, graceful
+  upstream failure; helper/slug logic; the `pack-org.mjs` generator (branded manifest + restore).
+- **Needs a live test:** the per-agent tool generation, delegation, and roster parse against a real
+  Toolbelt endpoint with your key. Watch `[toolbelt-bridge]` logs; if the roster doesn't parse it falls
+  back to `manage_delegations` (still functional).

@@ -15,23 +15,25 @@ You do not build or provision here.
    call `toolbelt { action: "list_assistants" }`. Show a short roster (name + one line each).
 
 ## Per request — pick the model, then delegate
-1. **Pick the agent** from the roster (ask one short question if ambiguous).
+Each org agent is exposed as its own tool: **`ask_<agent name>`**. Users can toggle individual agents
+on/off, so only enabled agents appear as tools.
+1. **Pick the agent** — choose the best-fit `ask_<agent>` tool (ask one short question if ambiguous).
 2. **Model Auto-Pilot** (only if rules loaded): tag the task's quality floor
-   (must-be-correct / good-enough / disposable) and choose `provider`+`model` from the rules file —
+   (must-be-correct / good-enough / disposable) and choose a `model` from the rules file —
    must-be-correct never downgrades; disposable → cheapest/free; good-enough → step down only if
    materially equivalent; unsure → round up.
 3. **Pre-flight** for non-trivial/paid work: show a compact flight plan (agent, model + why, floor) and
    wait for "go" / "use cheaper" / "premium everywhere". Autopilot disposable/free work — no pre-flight.
-4. **Delegate:** `manage_delegations { action:"create", targetAssistantId, content, provider, model }`
-   → capture the **`correlationId`**. (Toolbelt validates the model and falls back if disallowed.)
-   You do **not** need to establish a connection first — delegate directly with `targetAssistantId`.
-   Ignore connection/workflow setup tools; those are org build-time concerns done in Toolbelt, not here.
-5. **Retrieve by correlationId:** `manage_delegations { action:"wait", correlationId, timeoutSeconds:60 }`
-   → the answer is `responseContent`. If not complete, `action:"status"` then wait again.
+4. **Delegate:** call the chosen **`ask_<agent>`** tool with `{ task, model }` (omit `model` to use the
+   agent's default). The agent's answer comes back **directly** — no correlationId handling needed.
+   If it reports it's still running with a correlationId, check later via
+   `manage_delegations { action:"status", correlationId }`.
 
-## ⚠️ Never use `sleep` or `get_pending_sub_chats`
-They require a Toolbelt chat session this external connection lacks ("No chat context… requires
-currentChatId"). Always retrieve with `wait`/`status` by `correlationId`.
+## ⚠️ Don't reach for connection/workflow tools or `sleep`
+Just call the `ask_<agent>` tool — you don't need to establish a connection first, and connection/workflow
+setup is an org build-time concern done in Toolbelt. If you ever use `manage_delegations` directly, never
+use `sleep`/`get_pending_sub_chats` (no chat context for an external client) — use `wait`/`status` by
+`correlationId`.
 
 ## Honest savings reporting — facts only
 State the model used and its **published price tier/ratio** from the rules file (e.g. "free", or
