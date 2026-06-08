@@ -26,6 +26,83 @@ and delegates each request to the best-fit agent on the optimal model.
 features). Instead, install the bundled **Desktop Extension** (`desktop-extension/`, keychain auth) or
 add a **Custom Connector**, then paste the skill into a Project. Full steps in [`DESKTOP.md`](./DESKTOP.md).
 
+## Two ways to connect Toolbelt agents to Claude
+
+First, the mental model — **two layers of context**, in two places:
+
+- **The agent's brain** (expertise, system prompt, memory, connected tools, guardrails, spend limits) is
+  configured **in Toolbelt** when you build the assistant. Claude never sets this. You do **not** create
+  skill files in Claude or ask it to "become" the agent — the agent already is what it is, server-side.
+- **Routing context** (how *Claude* picks an agent, on which model, and retrieves the answer) is the only
+  thing set on the Claude side. The two methods below differ only in **how that routing context is
+  delivered** and **how curated the tool surface is.** Both keep the brain in Toolbelt.
+
+### Method A — Custom Connector (or Claude Code plugin) + instructions you provide
+
+Claude talks **directly** to Toolbelt's MCP endpoint. You supply the routing context: paste the router
+skill into a **Project's custom instructions** (Desktop / claude.ai), or let the **plugin's skill**
+auto-apply (Claude Code).
+
+```
+   ┌─ Project custom instructions = the router skill  (you paste it; Claude Code auto-applies)
+   ▼
+ You ─► Claude ───── MCP (Bearer / URL key) ─────► Toolbelt workspace MCP endpoint
+   │                                                  │  raw tools: toolbelt, manage_delegations,
+   │  Claude follows your pasted instructions:        │             read_storage_file … (FULL surface)
+   │   • toolbelt list_assistants   → roster          ▼
+   │   • read ModelAutoPilot.md     → pick model    hub assistant ─► delegates to target agent
+   │   • manage_delegations create  → wait(correlationId)  │         (its own memory / tools / guardrails)
+ You ◄── answer ◄───────────────────────────────────────────┘
+```
+
+**How you set context:** paste `plugins/toolbelt-get-started/skills/get-started/SKILL.md` into the
+Project's custom instructions (Desktop), or install the plugin so the skill auto-applies (Code). Claude
+creates nothing.
+
+**Pros** — works **everywhere** (Desktop, claude.ai browser, Claude Code); **no build step** (a URL or
+`/plugin install`); transparent (Claude talks straight to Toolbelt).
+**Cons** — you must **paste the skill into every Project** (Desktop), and without it Claude follows the raw
+tools' misleading guidance (`sleep`/`get_pending_sub_chats`, connection tools); the **full raw tool
+surface** is exposed so Claude can wander; the Desktop connector dialog takes a **URL only** (key in the
+URL); **no per-agent toggles**.
+
+### Method B — Bridge Extension (`.mcpb`) — self-contained
+
+A small **local bridge** (`desktop-extension/bridge.js`) sits between Claude and Toolbelt and **carries the
+routing context itself** — nothing to paste.
+
+```
+ You ─► Claude ──stdio──► bridge.js (local, in the extension) ──HTTPS + Bearer──► Toolbelt MCP endpoint
+                           │  • one ask_<agent> tool per assistant   (toggle each on/off)            │
+                           │  • bundled router instructions + prompt (nothing to paste)              ▼
+                           │  • curated surface + description rewrites (can't wander)        target agent runs
+                           │  • delegate→wait handled inside          (no correlationId for the model)
+ You ◄── answer ◄──────────┘ ◄──────────────────────────────────────────────────────────── (its own brain)
+```
+
+**How you set context:** nothing — install the extension, enter org name / workspace ID / API key. Each
+agent appears as an `ask_<name>` tool you can toggle.
+
+**Pros** — **nothing to paste**; **per-agent `ask_<name>` tools** (enable/disable specific assistants);
+**key in keychain** + Bearer header (never in a URL); **can't wander** (only router-essential tools,
+delegation handled internally); **per-org branding** via `pack-org.mjs` (named in the Settings list).
+**Cons** — **Claude Desktop only** (not claude.ai; Code uses the plugin); a **build step** (`npm install`
++ `mcpb pack`); we **maintain a local bridge** (~200 lines); behavior is **bundled at build time** (change
+instructions → rebuild + reinstall).
+
+### Which should you choose?
+
+| If you… | Use |
+|---|---|
+| Want a 2-minute test, or are on **claude.ai / Claude Code** | **Method A** |
+| Want the cleanest **Desktop** experience — toggle agents, keychain, zero paste | **Method B** |
+| Are **distributing to customers / teammates** | **Method B** (one branded `.mcpb` per org) |
+| Need one setup to work across **multiple clients** | **Method A** |
+
+**Rule of thumb: Method A to try it, Method B to live in it (on Desktop).** Both connect to the same
+Toolbelt endpoint and keep the agent's brain in Toolbelt — they differ only in how the routing context
+reaches Claude and how curated the tools are.
+
 ## What's inside
 
 ```
