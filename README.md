@@ -48,15 +48,23 @@ Toolbelt org. Your API key lives in the OS keychain and is sent as a Bearer head
 
 ## Install (Claude desktop app)
 
+**For end users — you received a `.mcpb` file from your provider.** No terminal needed.
+1. Claude Desktop → **Settings → Extensions → Install Extension** → select the `.mcpb` file.
+2. Enter what it asks for — your **API key** (and workspace ID / org name if they aren't pre-filled).
+3. Ask Claude to do something one of your agents handles — it routes to the right agent.
+
+**For operators / builders — packaging it yourself.**
 1. Build the extension once:
    ```bash
    cd desktop-extension && npm install && npx @anthropic-ai/mcpb pack
    ```
-   *(For a per-org name in the Settings list, build a branded copy instead:
-   `node pack-org.mjs --org "Acme Corp" --workspace <hub-workspace-id>`.)*
-2. Claude Desktop → **Settings → Extensions → Install Extension** → select `desktop-extension.mcpb`.
-3. Enter your **org name** (optional), **hub workspace ID**, and **API key**.
-4. Ask Claude to do something one of your agents handles — it routes to the right agent.
+   For a per-customer branded copy (their org name in the Settings list, workspace baked in so they only
+   enter a key):
+   ```bash
+   node pack-org.mjs --org "Acme Corp" --workspace <hub-workspace-id>
+   ```
+2. **Settings → Extensions → Install Extension** → select the `.mcpb` → enter org name / workspace ID / key.
+3. Hand the branded `.mcpb` to your customers — they install it with the end-user steps above.
 
 Full steps, the no-build custom-connector fallback, and troubleshooting: **[DESKTOP.md](./DESKTOP.md).**
 
@@ -98,7 +106,7 @@ plugin. This is the one place the legacy "marketplace" command applies — Claud
 a catalog repo:
 
 ```text
-/plugin marketplace add <github-user>/toolbelt-claude-marketplace
+/plugin marketplace add <github-user>/toolbelt-for-claude
 /plugin install toolbelt@apexti-toolbelt
 /toolbelt:get-started
 ```
@@ -157,6 +165,6 @@ Desktop connector dialog.
    enforcement on the MCP path) — tracked in the Toolbelt repo at `docs/claude-integration-roadmap.md`
    (evidence in `docs/claude-integration-findings.md`).
 
-> **Note on naming.** The GitHub repo is still `toolbelt-claude-marketplace` for historical reasons; the
-> "marketplace" concept only applies to the Claude Code path (Appendix A). The product is simply **Toolbelt
-> for Claude Desktop**.
+> **Note on naming.** "Marketplace" only refers to the Claude Code plugin command in Appendix A — that's
+> Claude Code's term for installing a plugin from a catalog repo. The product is simply **Toolbelt for
+> Claude Desktop**.

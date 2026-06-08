@@ -20,7 +20,7 @@ toolbelt-get-started/
 ## Install (Claude Code)
 
 ```text
-/plugin marketplace add <github-user>/toolbelt-claude-marketplace
+/plugin marketplace add <github-user>/toolbelt-for-claude
 /plugin install toolbelt@apexti-toolbelt
 /toolbelt:get-started
 ```

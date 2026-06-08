@@ -28,6 +28,8 @@ Your key is stored in the **OS keychain** and sent as an `Authorization: Bearer`
 The extension **bundles the routing instructions** and exposes **one `ask_<name>` tool per agent**, so
 there's nothing to paste.
 
+> **End user with a `.mcpb` from your provider?** Skip step 1 — go straight to step 2 and install the file.
+
 1. In a terminal, build the installable file once:
    ```bash
    cd desktop-extension && npm install && npx @anthropic-ai/mcpb pack
@@ -71,7 +73,7 @@ the org's agent roster is then the only context in the room.
 ## Using Claude Code instead (where the marketplace *does* work)
 If you use Claude Code (the CLI), the one-line marketplace path works there (this is Method A, auto-applied):
 ```text
-/plugin marketplace add YOUR_GITHUB_USERNAME/toolbelt-claude-marketplace
+/plugin marketplace add YOUR_GITHUB_USERNAME/toolbelt-for-claude
 /plugin install toolbelt@apexti-toolbelt
 /toolbelt:get-started
 ```
