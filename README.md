@@ -8,19 +8,23 @@ guardrails. **Claude is the front door; Toolbelt is the brain.**
 Design law: **Claude *uses* an org's agents; Toolbelt is where you *build* them.** Provisioning happens
 in Toolbelt, not in chat.
 
-## Install in a Claude client
+## Install
 
+The install path differs by client — the custom-marketplace / `/plugin` flow is **Claude Code only**.
+
+**Claude Code (CLI)** — supports custom marketplaces:
 ```text
 /plugin marketplace add YOUR_GITHUB_USERNAME/toolbelt-claude-marketplace
 /plugin install toolbelt@apexti-toolbelt
 /toolbelt:get-started
 ```
+You'll be prompted for your **hub workspace (assistant) ID** and **Toolbelt API key** (kept in your
+keychain, never committed). On first run it connects, loads your org's model rules, lists your agents,
+and delegates each request to the best-fit agent on the optimal model.
 
-On install you'll be prompted for your **hub workspace (assistant) ID** and **Toolbelt API key**
-(kept locally, never committed). On first run the plugin connects, lists your org's agents, and tells
-you to just ask — it delegates each request to the best-fit agent and returns that agent's answer.
-
-For the **desktop app**, see [`DESKTOP.md`](./DESKTOP.md) — install from your marketplace first; connector + Project is a fallback.
+**Claude desktop app** — does **not** support custom marketplaces or `/plugin` (those are Claude Code
+features). Instead, install the bundled **Desktop Extension** (`desktop-extension/`, keychain auth) or
+add a **Custom Connector**, then paste the skill into a Project. Full steps in [`DESKTOP.md`](./DESKTOP.md).
 
 ## What's inside
 
