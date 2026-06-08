@@ -82,8 +82,16 @@ server-side item (see `docs/claude-integration-roadmap.md` in the Toolbelt repo)
 1. **Router plugin** (this) — connect + list + delegate to the org's agents. ✅ built
 2. **Delegation round-trip** — ✅ working with zero server edits via `manage_delegations` create →
    `wait`/`status` by `correlationId` (the earlier "needs a chat context" blocker is solved client-side).
-3. **Generator** — auto-emit a branded connector + roster skill per org.
-4. **Optional later** — per-assistant toggle connectors, org-as-Claude-Project templates.
-5. **Server-side graduation** — see `docs/claude-integration-roadmap.md` in the Toolbelt repo.
+3. **Self-contained behavior via a custom MCP bridge** (zero Toolbelt edits) — replace the bundled
+   `mcp-remote` with our own thin local bridge that proxies to Toolbelt **and** carries the router
+   behavior itself: server `instructions` (auto system-prompt hint), a bundled `toolbelt` prompt
+   (one-action insert), and tool-description rewrites on passthrough (so the model sees
+   `wait`/`correlationId`, not the misleading `sleep`/`get_pending_sub_chats`). Removes the
+   paste-the-skill-into-a-Project step on desktop. **Gated on a probe:** does Desktop honor the MCP
+   `instructions` field? Test with `experiments/instructions-probe/` (🍍 = yes → fully automatic;
+   no 🍍 → fall back to the bundled prompt).
+4. **Generator** — auto-emit a branded connector + roster skill per org.
+5. **Optional later** — per-assistant toggle connectors, org-as-Claude-Project templates.
+6. **Server-side graduation** — see `docs/claude-integration-roadmap.md` in the Toolbelt repo.
 
 See the EVALUATION and plan docs for the full rationale.

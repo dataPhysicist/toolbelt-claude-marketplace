@@ -1,0 +1,18 @@
+{
+  "manifest_version": "0.3",
+  "name": "mcp-instructions-probe",
+  "display_name": "MCP Instructions Probe (diagnostic)",
+  "version": "0.1.0",
+  "description": "Diagnostic only. Tests whether this client injects an MCP server's initialize `instructions` into the model's context, and whether it surfaces server prompts. Remove after testing.",
+  "author": {
+    "name": "Apexti"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.js"]
+    }
+  }
+}
