@@ -9,6 +9,9 @@
  *              into TOOLBELT_AGENT_NAME (names the act_as_<agent> prompt; not asked at install).
  * --workspace  The agent's workspace ID. Baked into the endpoint so the customer only enters
  *              their API key at install. (Omit to let them enter it.)
+ * --context    Optional comma-separated storage files to auto-load into context at connect
+ *              (e.g. "Memory/OpenLoops.md,Config/identity.json"). Default (if omitted): the
+ *              bridge auto-loads files under Memory/ and Config/.
  * --out        Optional output filename (default: <slug>.mcpb).
  *
  * Requires `npm install` to have run in this folder (the bundled SDK is packed in).
@@ -39,6 +42,9 @@ delete m.user_config.toolbelt_agent_name; // …so it isn't asked at install
 if (opt.workspace) {
   m.server.mcp_config.env.TOOLBELT_MCP_URL = `https://toolbelt.apexti.com/api/workspaces/${opt.workspace}/mcp`;
   delete m.user_config.toolbelt_workspace_id; // baked in → only the API key remains
+}
+if (opt.context) {
+  m.server.mcp_config.env.TOOLBELT_CONTEXT_FILES = opt.context; // explicit memory/config files to preload
 }
 
 try {

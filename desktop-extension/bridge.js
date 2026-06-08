@@ -21,13 +21,15 @@ import {
   CallToolRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const VERSION = "0.12.0";
+const VERSION = "0.13.0";
 const log = (...a) => process.stderr.write(`[toolbelt-agent] ${a.join(" ")}\n`);
 
 const MCP_URL = process.env.TOOLBELT_MCP_URL;
@@ -46,6 +48,16 @@ const HIDE_META = /^(1|true|yes)$/i.test(process.env.TOOLBELT_HIDE_MANAGEMENT ||
 const META_TOOLS = new Set(["manage_delegations", "manage_workflows", "manage_assistant_connections"]);
 
 const WRAPPER = readFileSync(join(HERE, "router-instructions.md"), "utf8");
+
+// (B) Auto-load the agent's memory/config into context at connect. Explicit list via
+// env, else default to files under Memory/ and Config/. Capped to keep instructions sane.
+const CONTEXT_FILES = (process.env.TOOLBELT_CONTEXT_FILES || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter((s) => s && !s.includes("${"));
+const CONTEXT_PREFIXES = ["Memory/", "Config/"];
+const MAX_CONTEXT_BYTES = 24000;
+const RES_PREFIX = "toolbelt:///"; // (A) MCP resource URI scheme for the agent's storage files
 
 // --- helpers ---
 function extractData(res) {
@@ -74,6 +86,23 @@ function isAuthError(e) {
   if ((e?.constructor?.name || "") === "UnauthorizedError") return true;
   if (e?.code === 401 || e?.code === 403) return true;
   return /\b401\b|\b403\b|unauthor|forbidden|invalid.*(key|token|credential)/i.test(e?.message || "");
+}
+
+// list_storage_files returns text: "Found N files…\n- <name> (<size> bytes, <type>)".
+function parseFileList(res) {
+  const t = res?.content?.find?.((c) => c.type === "text")?.text || "";
+  const out = [];
+  for (const m of t.matchAll(/^- (.+?) \(\d+ bytes,/gm)) out.push(m[1]);
+  return out;
+}
+function fileText(res) {
+  return res?.content?.find?.((c) => c.type === "text")?.text ?? "";
+}
+function mimeFor(name) {
+  if (/\.md$/i.test(name)) return "text/markdown";
+  if (/\.json$/i.test(name)) return "application/json";
+  if (/\.html?$/i.test(name)) return "text/html";
+  return "text/plain";
 }
 
 // --- upstream (the agent's workspace endpoint) with reconnect ---
@@ -124,6 +153,48 @@ async function withUpstream(fn) {
   }
 }
 
+// --- (B) load the agent's memory/config files into a context block ---
+async function loadContextBlock() {
+  try {
+    let names = CONTEXT_FILES;
+    if (!names.length) {
+      const got = new Set();
+      for (const pfx of CONTEXT_PREFIXES) {
+        try {
+          const r = await withUpstream((c) => c.callTool({ name: "list_storage_files", arguments: { prefix: pfx, maxResults: 50 } }));
+          parseFileList(r).forEach((f) => got.add(f));
+        } catch {
+          /* prefix may not exist */
+        }
+      }
+      names = [...got];
+    }
+    if (!names.length) return "";
+    const parts = [];
+    let budget = MAX_CONTEXT_BYTES;
+    for (const f of names) {
+      if (budget <= 0) break;
+      try {
+        const r = await withUpstream((c) => c.callTool({ name: "read_storage_file", arguments: { fileName: f, raw: true } }));
+        let txt = fileText(r);
+        if (txt.length > budget) txt = txt.slice(0, budget) + "\n…(truncated)";
+        budget -= txt.length;
+        parts.push(`## ${f}\n\n${txt}`);
+      } catch {
+        /* skip unreadable */
+      }
+    }
+    if (!parts.length) return "";
+    return (
+      `# ${AGENT_NAME || "Agent"} — loaded memory & config (snapshot at connect)\n\n` +
+      `Treat these as your current working state. Re-read via the storage tools or the attached resources ` +
+      `for the latest.\n\n${parts.join("\n\n")}`
+    );
+  } catch {
+    return "";
+  }
+}
+
 // --- persona (the agent's systemPrompt), fetched once ---
 let persona = null; // null = not yet fetched; "" = none/failed
 async function getPersona() {
@@ -141,22 +212,28 @@ async function getPersona() {
   }
   return persona;
 }
-function buildInstructions(p) {
+function buildInstructions(p, ctx) {
   const name = AGENT_NAME || "this agent";
   const head = WRAPPER.replace(/\{\{AGENT\}\}/g, name);
-  return p ? `${head}\n\n---\n\n# ${name} — operating instructions\n\n${p}` : head;
+  let out = p ? `${head}\n\n---\n\n# ${name} — operating instructions\n\n${p}` : head;
+  if (ctx) out += `\n\n---\n\n${ctx}`;
+  return out;
 }
 
 // Best-effort persona fetch at startup so it can ride in the initialize `instructions`
 // (clients that honor it). Never fatal; it also loads lazily via the prompt.
 const startupPersona = await getPersona();
 if (!AGENT_NAME) AGENT_NAME = "Agent";
+const startupContext = await loadContextBlock();
 const PROMPT_NAME = `act_as_${slugify(AGENT_NAME)}`;
 
 // --- downstream server ---
 const server = new Server(
   { name: "toolbelt-agent", version: VERSION },
-  { capabilities: { tools: {}, prompts: {} }, instructions: buildInstructions(startupPersona) },
+  {
+    capabilities: { tools: {}, prompts: {}, resources: {} },
+    instructions: buildInstructions(startupPersona, startupContext),
+  },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -178,6 +255,27 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
 });
 
+// (A) Expose the agent's storage files as MCP resources (memory/config/skills, etc.).
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  let files = [];
+  try {
+    const r = await withUpstream((c) => c.callTool({ name: "list_storage_files", arguments: { maxResults: 200 } }));
+    files = parseFileList(r);
+  } catch (e) {
+    log(`listResources failed: ${e.message}`);
+  }
+  return {
+    resources: files.map((f) => ({ uri: RES_PREFIX + encodeURI(f), name: f, mimeType: mimeFor(f) })),
+  };
+});
+
+server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
+  const uri = req.params.uri;
+  const fileName = decodeURI(uri.startsWith(RES_PREFIX) ? uri.slice(RES_PREFIX.length) : uri);
+  const r = await withUpstream((c) => c.callTool({ name: "read_storage_file", arguments: { fileName, raw: true } }));
+  return { contents: [{ uri, mimeType: mimeFor(fileName), text: fileText(r) }] };
+});
+
 server.setRequestHandler(ListPromptsRequestSchema, async () => {
   const mine = {
     name: PROMPT_NAME,
@@ -197,7 +295,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (req) => {
     const p = await getPersona();
     return {
       description: `Operating instructions for ${AGENT_NAME}`,
-      messages: [{ role: "user", content: { type: "text", text: buildInstructions(p) } }],
+      messages: [{ role: "user", content: { type: "text", text: buildInstructions(p, await loadContextBlock()) } }],
     };
   }
   return withUpstream((c) => c.getPrompt({ name: req.params.name, arguments: req.params.arguments ?? {} }));
