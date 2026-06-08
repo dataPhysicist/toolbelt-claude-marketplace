@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const VERSION = "0.13.0";
+const VERSION = "0.13.1";
 const log = (...a) => process.stderr.write(`[toolbelt-agent] ${a.join(" ")}\n`);
 
 const MCP_URL = process.env.TOOLBELT_MCP_URL;
@@ -222,18 +222,17 @@ function buildInstructions(p, ctx) {
 
 // Best-effort persona fetch at startup so it can ride in the initialize `instructions`
 // (clients that honor it). Never fatal; it also loads lazily via the prompt.
-const startupPersona = await getPersona();
+// Connect the server IMMEDIATELY — never block startup on upstream calls (that can
+// exceed the client's init timeout → "no tools"). Persona + memory load lazily via the
+// act_as_<agent> prompt (and via resources / storage tools). AGENT_NAME comes from the
+// baked env (pack-agent) or defaults; no fetch needed to start.
 if (!AGENT_NAME) AGENT_NAME = "Agent";
-const startupContext = await loadContextBlock();
 const PROMPT_NAME = `act_as_${slugify(AGENT_NAME)}`;
 
 // --- downstream server ---
 const server = new Server(
   { name: "toolbelt-agent", version: VERSION },
-  {
-    capabilities: { tools: {}, prompts: {}, resources: {} },
-    instructions: buildInstructions(startupPersona, startupContext),
-  },
+  { capabilities: { tools: {}, prompts: {}, resources: {} }, instructions: buildInstructions("", "") },
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
