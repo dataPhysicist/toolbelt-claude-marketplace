@@ -12,10 +12,11 @@ You connect, see your agents, pick the right model for each task, and delegate.
 ## On first use — connect, load the org's rules, show the roster
 1. Confirm the Toolbelt connector is authorized. If no Toolbelt tools are present, tell the user to
    finish authorizing the Toolbelt connector, then stop.
-2. **Load the org's model rules once per session:** call
-   `read_storage_file { fileName: "ModelAutoPilot.md", scope: "org" }`. Keep the content for the whole
-   session — it is the **source of truth** for the model catalog, prices, quality floors, and any
-   org-specific rules. If it's missing or org storage is disabled, the org hasn't published Auto-Pilot
+2. **Load the model rules once per session:** try
+   `read_storage_file { fileName: "ModelAutoPilot.md", scope: "org" }`; **if it's "not found", retry with
+   `scope: "assistant"`** (personal/workspace storage — where it lives for a personal hub). Keep the
+   content for the whole session — it is the **source of truth** for the model catalog, prices, quality
+   floors, and any org-specific rules. If neither scope has the file, the org hasn't published Auto-Pilot
    rules → **skip model selection** and let each agent use its own configured model. Don't fail; just
    note rules weren't found and proceed.
 3. Get the org's agents — `list_assistants` is an **action of the `toolbelt` tool**, not a standalone

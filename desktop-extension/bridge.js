@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const VERSION = "0.10.0";
+const VERSION = "0.10.1";
 const log = (...a) => process.stderr.write(`[toolbelt-bridge] ${a.join(" ")}\n`);
 
 const MCP_URL = process.env.TOOLBELT_MCP_URL;
