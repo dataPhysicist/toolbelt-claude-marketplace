@@ -11,24 +11,28 @@ and proxies traffic, adding:
 
 ```
 Claude Desktop ──stdio──> bridge.js ──HTTPS + Bearer──> toolbelt.apexti.com/api/workspaces/<id>/mcp
-   │  one ask_<agent> tool per org assistant, recent-first (toggle on/off; delegate→wait handled inside)
-   │  check_agent_result (poll a long job by correlationId) · read_storage_file (Model Auto-Pilot rules)
-   │  toolbelt + toolbelt_help kept for ad-hoc org management (manage_delegations + the rest hidden)
-   │  progress notifications while waiting · auto-reconnect if the session drops · tools/list_changed
+   │  CONSTANT tools (any org size): list_agents · ask_agent · check_agent_result · set_pinned_agents
+   │  + one ask_<name> tool per PINNED agent only (not one per agent)
+   │  read_storage_file (Model Auto-Pilot rules) · toolbelt + toolbelt_help (ad-hoc org management)
+   │  delegate→wait handled inside · progress notifications while waiting · auto-reconnect · tools/list_changed
    │  bundled `toolbelt` prompt (>>toolbelt) + server `instructions` (Code/VS Code honor; Desktop ignores)
 ```
 
-1. **Per-agent tools (recent-first).** At connect, the bridge calls `list_assistants`, sorts by last
-   activity, and surfaces **all** agents as `ask_<name>` tools — toggle individual agents on/off in
-   Settings → Extensions. `ask_<agent>({ task, model? })` runs `create → wait` internally, emits **progress
-   notifications** while waiting (so long jobs don't time out), and returns the answer. If it's still
-   running, it hands back a `correlationId` for **`check_agent_result`**.
-2. **Curated, but management stays available.** Exposed: the `ask_<agent>` tools, `check_agent_result`,
-   `read_storage_file`, and `toolbelt`/`toolbelt_help` (ad-hoc org management). `manage_delegations`,
-   storage writes, `duckdb_*`, `wrench_*`, service tools, and connection/workflow setup are hidden.
-3. **Resilient.** Auto-reconnects if the upstream session drops (retry-once); refreshes the roster every
-   few minutes and emits `tools/list_changed` when agents are added/removed; clear message on a 401.
-4. **Org name.** Optional `Org name` field at install; if blank the bridge learns it from
+1. **Scalable tool model (constant size).** Instead of one tool per agent (which floods the list and
+   context at 50–100 agents), the bridge exposes a fixed set: `list_agents(query?)` to discover,
+   `ask_agent({ agent, task, model? })` to delegate to any agent by name/id, and `check_agent_result`
+   for long jobs. `ask_agent` resolves the name against a cached roster, runs `create → wait` internally,
+   emits **progress notifications** while waiting, and returns the answer (or a `correlationId`).
+2. **Pinned favorites.** `set_pinned_agents([...])` pins a few agents, which then also appear as their own
+   one-click `ask_<name>` tools. Pins persist in `~/.toolbelt-claude/pins.json` (keyed by workspace, so
+   they survive extension updates) and can be **pre-baked** by the operator (`pack-org.mjs --pin "…"` →
+   `TOOLBELT_PINNED_AGENTS`) or seeded via the optional install field.
+3. **Curated, management available.** Hidden: `manage_delegations`, storage writes, `duckdb_*`, `wrench_*`,
+   service tools, connection/workflow setup. The bridge uses `manage_delegations`/`list_assistants`
+   upstream itself; `toolbelt`/`toolbelt_help` stay exposed for ad-hoc management.
+4. **Resilient.** Auto-reconnects if the upstream session drops (retry-once); generic tools list even when
+   the upstream is momentarily down; clear message on a 401.
+5. **Org name.** Optional `Org name` field at install; if blank the bridge learns it from
    `list_organizations`. Used so Claude refers to your org by name.
 
 ## Install (single-file .mcpb — recommended)

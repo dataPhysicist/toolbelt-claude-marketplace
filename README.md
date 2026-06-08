@@ -33,14 +33,16 @@ Toolbelt org. Your API key lives in the OS keychain and is sent as a Bearer head
 
 ```
  You ─► Claude Desktop ──► Toolbelt bridge (local) ──HTTPS + Bearer──► your Toolbelt org
-                            │  • each agent = an  ask_<name>  tool (toggle on/off)
+                            │  • ask_agent + list_agents (works for 5 or 500 agents)
+                            │  • your pinned favorites also get one-click ask_<name> tools
                             │  • picks the optimal model per task (Model Auto-Pilot)
                             │  • delegation handled for you (no plumbing to learn)
  You ◄── answer ◄───────────┘ ◄──────────── the agent runs in Toolbelt (its own memory / tools / guardrails)
 ```
 
-- **Each agent is a tool.** Your org's agents appear as `ask_<name>` tools you can enable/disable
-  individually in Settings → Extensions.
+- **Scales to any org size.** A constant set of tools (`list_agents`, `ask_agent`, `check_agent_result`)
+  reaches every agent — no flooding the list when an org has 50–100 agents. **Pin** a few favorites and
+  they get their own one-click `ask_<name>` tools (set in-chat after install, or pre-baked per customer).
 - **Right model, automatically.** Claude picks the best model per task from your org's rules and previews
   paid work before spending.
 - **Governance stays in Toolbelt.** Permissions, audit, and spend control are enforced server-side,
@@ -88,7 +90,7 @@ you — nothing to paste.
 
 ```
 desktop-extension/         # the Claude Desktop extension — the main way to use this
-  ├── bridge.js            #   local MCP proxy: ask_<agent> tools, Model Auto-Pilot, governance passthrough
+  ├── bridge.js            #   local MCP proxy: list_agents/ask_agent + pinned tools, Model Auto-Pilot
   ├── router-instructions.md  #   bundled routing guidance (prompt + server instructions)
   ├── manifest.json · package.json   #   MCPB manifest + SDK dependency
   └── pack-org.mjs         #   per-org branded build (names it in the Settings list)

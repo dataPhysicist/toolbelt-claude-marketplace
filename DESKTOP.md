@@ -25,8 +25,9 @@ the *routing context* reaches Claude. Full diagrams + pros/cons are in the
 
 ## Method B (recommended) — Desktop Extension (.mcpb)
 Your key is stored in the **OS keychain** and sent as an `Authorization: Bearer` header (never in a URL).
-The extension **bundles the routing instructions** and exposes **one `ask_<name>` tool per agent**, so
-there's nothing to paste.
+The extension **bundles the routing instructions** and exposes a constant set of tools (`list_agents`,
+`ask_agent`, …) that reaches every agent regardless of org size — plus one-click `ask_<name>` tools for
+the favorites you **pin** — so there's nothing to paste.
 
 > **End user with a `.mcpb` from your provider?** Skip step 1 — go straight to step 2 and install the file.
 
