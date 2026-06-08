@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const VERSION = "0.10.1";
+const VERSION = "0.10.2";
 const log = (...a) => process.stderr.write(`[toolbelt-bridge] ${a.join(" ")}\n`);
 
 const MCP_URL = process.env.TOOLBELT_MCP_URL;
@@ -107,6 +107,22 @@ function extractData(res) {
     } catch {
       return { _raw: text };
     }
+  }
+  // Some Toolbelt tools (manage_delegations) return data at the TOP LEVEL of the
+  // result object instead of inside `content` (the MCP result schema is "loose", so
+  // those fields survive). Use them directly.
+  if (
+    res &&
+    typeof res === "object" &&
+    (res.correlationId !== undefined ||
+      res.responseContent !== undefined ||
+      res.assistants !== undefined ||
+      res.organizations !== undefined ||
+      res.subChats !== undefined ||
+      res.status !== undefined ||
+      res.success !== undefined)
+  ) {
+    return res;
   }
   return {};
 }
@@ -256,8 +272,21 @@ async function delegateToAgent(id, label, { task, model } = {}, req, extra) {
   const createArgs = { action: "create", targetAssistantId: id, content: task };
   if (model) createArgs.model = model;
   const createRes = await withUpstream((c) => c.callTool({ name: "manage_delegations", arguments: createArgs }));
-  const correlationId = extractData(createRes).correlationId;
-  if (!correlationId) return createRes; // surface whatever the create returned
+  const created = extractData(createRes);
+  const correlationId = created.correlationId;
+  if (!correlationId) {
+    const raw = JSON.stringify(created).slice(0, 800);
+    log(`delegation create returned no correlationId for ${label}: ${raw}`);
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: `Couldn't start a task for the "${label}" agent — delegation returned no correlationId. Raw response: ${raw}`,
+        },
+      ],
+    };
+  }
   const progressToken = req?.params?._meta?.progressToken;
   for (let i = 0; i < WAIT_ITERS; i++) {
     if (progressToken && extra?.sendNotification) {

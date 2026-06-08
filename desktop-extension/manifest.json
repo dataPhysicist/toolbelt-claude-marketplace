@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "toolbelt",
   "display_name": "Toolbelt — Use Your Org's Agents",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Connect Claude to your governed Toolbelt org, pick the optimal model per task, and route work to its agents. Bundles the router behavior so there's nothing to paste.",
   "author": {
     "name": "Apexti",
