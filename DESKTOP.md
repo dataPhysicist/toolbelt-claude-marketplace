@@ -16,7 +16,7 @@ the *routing context* reaches Claude. Full diagrams + pros/cons are in the
 | Setup | install a `.mcpb` | paste a URL |
 | Key | OS keychain, Bearer header | in the URL |
 | Routing context | **bundled** (nothing to paste) | **paste the skill** into a Project |
-| Agents | one `ask_<name>` tool each (toggle on/off) | one connection; delegate by instruction |
+| Agent | the agent's tools + persona (`act_as_<agent>`) | the agent's tools; persona pasted into a Project |
 | Build step | yes (`npm install` + pack) | none |
 
 **Rule of thumb: Method A to try it fast, Method B to live in it.**
@@ -25,9 +25,8 @@ the *routing context* reaches Claude. Full diagrams + pros/cons are in the
 
 ## Method B (recommended) — Desktop Extension (.mcpb)
 Your key is stored in the **OS keychain** and sent as an `Authorization: Bearer` header (never in a URL).
-The extension **bundles the routing instructions** and exposes a constant set of tools (`list_agents`,
-`ask_agent`, …) that reaches every agent regardless of org size — plus one-click `ask_<name>` tools for
-the favorites you **pin** — so there's nothing to paste.
+The extension brings **one agent** into Claude: its own tools pass straight through, and its persona loads
+via an `act_as_<agent>` prompt (and the server `instructions`) — so there's nothing to paste.
 
 > **End user with a `.mcpb` from your provider?** Skip step 1 — go straight to step 2 and install the file.
 
@@ -35,15 +34,15 @@ the favorites you **pin** — so there's nothing to paste.
    ```bash
    cd desktop-extension && npm install && npx @anthropic-ai/mcpb pack
    ```
-   This produces `desktop-extension/desktop-extension.mcpb`. *(For a per-org name in the Settings list,
-   build a branded copy instead: `node pack-org.mjs --org "Acme Corp" --workspace <hub-id>`.)*
+   This produces `desktop-extension/desktop-extension.mcpb`. *(For a branded per-agent build named in the
+   Settings list, use instead: `node pack-agent.mjs --agent "Chief-of-Staff" --workspace <agent-id>`.)*
 2. Claude Desktop → **Settings → Extensions → Extension Developer → Install Extension** → select the
    **`.mcpb` file**. *(Use "Install **Extension**" — the file picker — not "Install Unpacked Extension",
    which wants a folder and greys out files.)*
-3. When prompted, enter an **org name** (optional label, e.g. your company), your **hub workspace ID**,
+3. When prompted, enter an **agent name** (optional label), the **agent's workspace ID**,
    and your **Toolbelt API key**.
-4. Open any chat — each agent appears as an `ask_<name>` tool you can toggle on/off. Say
-   **"connect Toolbelt"**, or run **`>>toolbelt`** to load the full router guidance first.
+4. Open a chat — the agent's tools are available. Run **`>>act_as_<agent>`** to load its persona and work
+   as the agent.
 
 ## Method A (quickest) — Custom Connector + Project instructions
 No build step. The connector dialog takes a **URL only**, so the key goes in the URL query string —

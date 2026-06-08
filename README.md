@@ -1,99 +1,95 @@
 # Toolbelt for Claude Desktop
 
-**Use your organization's governed Toolbelt agents right inside the Claude desktop app.**
+**Bring one of your governed Toolbelt agents — its tools, playbooks, and persona — into the Claude desktop app.**
 
-Toolbelt is your team's AI operating layer — agents with their own memory, connected tools, guardrails,
-audit, and spend control. This brings that **runtime into Claude Desktop**, so you stay in the chat you
-already use and still get what raw Claude can't give a business: shared agents, permissions, audit, spend
-control, and connected tools. *Same chat, now run like a business.*
+Toolbelt is your team's AI operating layer — agents with their own persona, connected tools, guardrails,
+audit, and spend control. This brings **one such agent's runtime into Claude Desktop**: Claude *becomes*
+that agent, using its connected tools (Gmail, Slack, Calendar…), its wrenches/playbooks, and its files —
+all governed by Toolbelt. *Same chat, now run like a business.*
 
-> **Claude is the front door; Toolbelt is the brain.** You *use* your org's agents here; you *build and
-> govern* them in Toolbelt. Nothing about an agent is recreated in Claude — its brain stays server-side.
+> **Claude is the front door; Toolbelt is the brain.** You *use* an agent here; you *build and govern* it
+> in Toolbelt. **One extension = one agent** (install another for a second agent).
 
 ---
 
 ## What it is
 
-Your Toolbelt org's agents become usable inside Claude Desktop. Ask Claude something one of your agents
-handles, and it routes the work to that agent — which runs in Toolbelt with its full context — and returns
-the answer.
+You pick a Toolbelt assistant; the extension brings **that agent** into Claude Desktop — its tools and its
+operating instructions. Claude works *as* the agent, with everything governed server-side.
 
-| | Raw Claude | Claude + Toolbelt |
+| | Raw Claude | Claude + a Toolbelt agent |
 |---|---|---|
-| **Agents** | one general assistant | your org's purpose-built agents, shared across the team |
-| **Memory & tools** | per chat | each agent's own memory + connected tools (Gmail, Slack, CRM, …) |
+| **Persona** | general assistant | the agent's system prompt / operating instructions |
+| **Tools** | per chat | the agent's connected services (Gmail, Slack, Calendar…) + its wrenches/playbooks |
+| **Files & memory** | none | the agent's storage (its `Config` / `Memory` / `Skills` files) |
 | **Governance** | none | permissions, audit, per-tool restrictions — enforced server-side |
 | **Spend** | your plan | metered and governed at the org level |
-| **Model** | fixed | the optimal model per task (Model Auto-Pilot, from your org's rules) |
 
 ## How it works
 
-A small **local bridge** — shipped as a one-click Desktop Extension — connects Claude Desktop to your
-Toolbelt org. Your API key lives in the OS keychain and is sent as a Bearer header (never in a URL).
+A small **local bridge** — shipped as a one-click Desktop Extension — connects Claude Desktop to **one
+agent's** Toolbelt endpoint. Your API key lives in the OS keychain and is sent as a Bearer header (never in
+a URL).
 
 ```
- You ─► Claude Desktop ──► Toolbelt bridge (local) ──HTTPS + Bearer──► your Toolbelt org
-                            │  • ask_agent + list_agents (works for 5 or 500 agents)
-                            │  • your pinned favorites also get one-click ask_<name> tools
-                            │  • picks the optimal model per task (Model Auto-Pilot)
-                            │  • delegation handled for you (no plumbing to learn)
- You ◄── answer ◄───────────┘ ◄──────────── the agent runs in Toolbelt (its own memory / tools / guardrails)
+ You ─► Claude Desktop ──► Toolbelt agent bridge (local) ──HTTPS + Bearer──► the agent's Toolbelt workspace
+                            │  • the agent's own tools pass straight through (governed by Toolbelt)
+                            │  • its persona loads as `instructions` + an `act_as_<agent>` prompt
+                            │  • its wrenches/playbooks + storage files come too
+ You ◄── result ◄───────────┘ ◄──────────── tools run server-side with permissions / audit / spend control
 ```
 
-- **Scales to any org size.** A constant set of tools (`list_agents`, `ask_agent`, `check_agent_result`)
-  reaches every agent — no flooding the list when an org has 50–100 agents. **Pin** a few favorites and
-  they get their own one-click `ask_<name>` tools (set in-chat after install, or pre-baked per customer).
-- **Right model, automatically.** Claude picks the best model per task from your org's rules and previews
-  paid work before spending.
-- **Governance stays in Toolbelt.** Permissions, audit, and spend control are enforced server-side,
-  whichever chat you use.
+- **It's the agent's real toolbox.** Connecting to one agent natively exposes its governed tools — no
+  client-side filtering; whatever the agent is configured for in Toolbelt is exactly what you get.
+- **Claude becomes the agent.** Run **`>>act_as_<agent>`** to load its operating instructions (persona +
+  playbooks), then work as it. (Claude Code auto-applies the persona; the desktop app needs the one-time
+  prompt, since it ignores server `instructions`.) The agent's own rules — including its model-selection
+  policy — travel *in* its persona.
+- **Governance stays in Toolbelt.** Permissions, audit, and spend are enforced server-side on every call.
 
 ## Install (Claude desktop app)
 
 **For end users — you received a `.mcpb` file from your provider.** No terminal needed.
 1. Claude Desktop → **Settings → Extensions → Install Extension** → select the `.mcpb` file.
-2. Enter what it asks for — your **API key** (and workspace ID / org name if they aren't pre-filled).
-3. Ask Claude to do something one of your agents handles — it routes to the right agent.
+2. Enter your **API key** (and the agent's workspace ID, if it isn't pre-filled).
+3. Run **`>>act_as_<agent>`** to load the agent, then work as it.
 
-**For operators / builders — packaging it yourself.**
-1. Build the extension once:
+**For operators / builders — packaging an agent.**
+1. Build once:
    ```bash
    cd desktop-extension && npm install && npx @anthropic-ai/mcpb pack
    ```
-   For a per-customer branded copy (their org name in the Settings list, workspace baked in so they only
-   enter a key):
+   For a branded per-agent copy (named in the Settings list, workspace baked in so the customer only
+   enters a key):
    ```bash
-   node pack-org.mjs --org "Acme Corp" --workspace <hub-workspace-id>
+   node pack-agent.mjs --agent "Chief-of-Staff" --workspace <agent-workspace-id>
    ```
-2. **Settings → Extensions → Install Extension** → select the `.mcpb` → enter org name / workspace ID / key.
-3. Hand the branded `.mcpb` to your customers — they install it with the end-user steps above.
+2. **Settings → Extensions → Install Extension** → select the `.mcpb` → enter the API key.
+3. Hand the branded `.mcpb` to your customer — they install it with the end-user steps above.
 
-Full steps, the no-build custom-connector fallback, and troubleshooting: **[DESKTOP.md](./DESKTOP.md).**
+Full steps and troubleshooting: **[DESKTOP.md](./DESKTOP.md).**
 
-## Model Auto-Pilot
+## The agent's own rules (incl. model selection)
 
-Before each task, Claude picks the optimal model and passes it to your agent (Toolbelt validates it and
-falls back if it isn't allowed). The rules — model catalog, prices, quality floors — live in your org's
-`ModelAutoPilot.md` in Toolbelt storage, so each org customizes its own and nothing goes stale. Paid work
-gets a one-line preview ("flight plan") before spending; trivial/free work just runs. Reporting is honest:
-it names the model and its published price tier (e.g. "free", "~68% cheaper per token"), never a guessed
-"tokens saved."
+Whatever the agent does is defined by **its persona** — which comes along when you `act_as_<agent>`. If the
+agent has its own model-selection policy (e.g. a "Model Auto-Pilot" section in its system prompt, or a
+`ModelAutoPilot.md` in its storage), that travels with it; the extension doesn't add a separate layer.
+Permissions, audit, and spend remain governed server-side by Toolbelt.
 
 ## How to think about context (FAQ)
 
-You don't create skill files or "set up" the agent inside Claude. **The agent's expertise, memory, tools,
-and guardrails are configured in Toolbelt** when you build it, and are automatically in play when Claude
-calls it. The only thing on the Claude side is thin *routing* guidance, and the extension bundles that for
-you — nothing to paste.
+You don't create skill files or re-build the agent inside Claude. **The agent's persona, tools, files, and
+guardrails are configured in Toolbelt.** The extension passes its tools straight through and serves its
+system prompt — so "loading the agent" is just running `>>act_as_<agent>`; nothing to paste.
 
 ## What's inside
 
 ```
 desktop-extension/         # the Claude Desktop extension — the main way to use this
-  ├── bridge.js            #   local MCP proxy: list_agents/ask_agent + pinned tools, Model Auto-Pilot
-  ├── router-instructions.md  #   bundled routing guidance (prompt + server instructions)
+  ├── bridge.js            #   local MCP proxy: passes the agent's tools through + serves its persona
+  ├── router-instructions.md  #   the "you are <agent>" persona wrapper (persona fetched at runtime)
   ├── manifest.json · package.json   #   MCPB manifest + SDK dependency
-  └── pack-org.mjs         #   per-org branded build (names it in the Settings list)
+  └── pack-agent.mjs       #   per-AGENT branded build (names it in the Settings list)
 DESKTOP.md                 # full desktop setup + troubleshooting
 plugins/toolbelt-get-started/   # Appendix A — the Claude Code (CLI) path
 experiments/               # diagnostics (e.g. the MCP-instructions probe)
