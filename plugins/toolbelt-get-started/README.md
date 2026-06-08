@@ -29,14 +29,16 @@ On install you're prompted for your **hub workspace ID** and **API key** (kept i
 `userConfig`, never committed). The skill then connects, loads your org's `ModelAutoPilot.md` rules,
 lists your agents, and delegates each request to the best-fit agent on the optimal model.
 
-> **For best results — create a Cowork Project per assistant.** Whenever you add a Toolbelt assistant,
-> create a dedicated **Project** in Cowork mode for it. Send this as your **first prompt** in the Project:
+> **For best results — update CLAUDE.md each time you connect an assistant.** A single Project can
+> connect to multiple Toolbelt assistants. Whenever you add one, send this prompt so Claude learns how
+> to work with it:
 >
 > *"Read the assistant instructions of the connector named `<toolbelt assistant name>` and update your
 > instructions, CLAUDE.md, so we best utilize this assistant in this project."*
 >
-> This seeds the Project's CLAUDE.md with the assistant's purpose, tools, and constraints so Claude routes
-> and collaborates effectively across sessions — without you re-explaining context each time.
+> Run it once per assistant you add. CLAUDE.md accumulates each assistant's purpose, tools, and
+> constraints — so Claude routes correctly across all of them without you re-explaining the setup each
+> session.
 
 ## On the desktop app
 
