@@ -20,7 +20,8 @@ You connect, see your agents, pick the right model for each task, and delegate.
    note rules weren't found and proceed.
 3. Get the org's agents — `list_assistants` is an **action of the `toolbelt` tool**, not a standalone
    tool: call `toolbelt { action: "list_assistants" }`. Show a short roster (name + one line each). Tell
-   the user they can just ask, and you'll route to the right agent on the best model.
+   the user they can just ask, and you'll route to the right agent on the best model. Also call
+   `toolbelt { action: "list_organizations" }` once to learn the org's name and refer to the org by it.
 
 ## To handle a request — optimize the model, then delegate
 Two decisions per request: **which agent** (from the roster) and **which model** that agent should run
