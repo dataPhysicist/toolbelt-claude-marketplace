@@ -1,7 +1,7 @@
 {
   "name": "chief-of-staff",
   "description": "An always-on digital Chief of Staff for founders and executives. Turns a noisy inbox, calendar, and meeting stream into a clear operating picture — email triage, meeting prep, daily briefs, and follow-through. Routing skill — pair with the Chief-of-Staff connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "author": {
     "name": "Apexti",
     "url": "https://apexti.com"
