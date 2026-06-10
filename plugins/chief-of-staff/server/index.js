@@ -17,7 +17,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 
-const VERSION = "2.0.0";
+const VERSION = "2.1.0";
 const log = (...a) => process.stderr.write(`[toolbelt-assistant] ${a.join(" ")}\n`);
 process.on("unhandledRejection", (e) => log(`unhandledRejection: ${e?.message || e}`));
 process.on("uncaughtException", (e) => log(`uncaughtException: ${e?.message || e}`));
@@ -247,6 +247,7 @@ const personaTool = () => ({
     `Load the live operating instructions (persona) of the "${NAME || "Toolbelt"}" assistant from Toolbelt. ` +
     `Call this when asked to act as the assistant, then fully adopt the returned instructions for the conversation.`,
   inputSchema: { type: "object", properties: {} },
+  annotations: { readOnlyHint: true },
 });
 const setupTool = () => ({
   name: SETUP_TOOL,
@@ -263,7 +264,15 @@ const statusTool = () => ({
     `Call this tool to retry and see details. Common causes: wrong workspace ID, invalid API key, Toolbelt unreachable.`,
   inputSchema: { type: "object", properties: {} },
 });
-const tagTools = (tools) => (NAME ? tools.map((t) => ({ ...t, description: `[${NAME}] ${t.description || ""}` })) : tools);
+// Read-only annotation: clients prompt less for tools marked readOnlyHint. We only mark
+// names whose verb is unambiguously read-only; writes/sends/deletes still prompt.
+const RO_VERBS = /(^|[_-])(list|read|get|search|grep|find|count|describe|fetch|view)([_-]|$)/i;
+const annotate = (t) =>
+  t.annotations?.readOnlyHint === undefined && RO_VERBS.test(t.name)
+    ? { ...t, annotations: { ...t.annotations, readOnlyHint: true } }
+    : t;
+const tagTools = (tools) =>
+  tools.map((t) => annotate(NAME ? { ...t, description: `[${NAME}] ${t.description || ""}` } : t));
 
 async function fetchPersona() {
   let text = "";
