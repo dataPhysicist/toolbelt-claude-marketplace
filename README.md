@@ -40,49 +40,61 @@ never leaves the server.
 | Teamwork | one person's assistant | a roster: agents delegate to each other, and the whole team uses the same ones |
 | Portability | locked to your Claude account | the same agent works in Claude, ChatGPT, Gemini, and Toolbelt itself |
 
+## How it's packaged: connector + skill, separately
+
+Each agent ships as **two small pieces** that work together:
+
+1. **The connector** — a one-click `.mcpb` desktop extension (in `dist/`). It proxies the
+   agent's live Toolbelt MCP endpoint: tools tagged with the agent's name, persona loaded
+   live via `load_persona`, read-only tools annotated so Claude prompts less. Your API
+   key goes into the **OS keychain** at install. Because it's a regular connector, each
+   agent gets its own **on/off toggle in every chat's "+" menu** and fully inspectable
+   tool calls.
+2. **The routing skill** — a plugin from this marketplace. It teaches Claude *when* to
+   use the agent ("what's on my calendar?" → Chief-of-Staff) without being told, and
+   updates automatically when this repo changes.
+
 ## Install (Claude Desktop / Cowork)
 
-1. In Claude Desktop: **Customize → Plugins → "+" → Add marketplace** → enter
-   `dataPhysicist/toolbelt-for-claude`
-2. Install the agent plugin you want (e.g. **Chief of staff**).
-3. Give it your Toolbelt API key (Toolbelt → Settings → Connect to Claude). Pick one:
-   - **Key file (recommended for now):**
-     `mkdir -p ~/.toolbelt && printf '%s\n' 'tb_YOUR_KEY' > ~/.toolbelt/api_key && chmod 600 ~/.toolbelt/api_key`
-     One file, shared by every agent plugin.
-   - **In chat:** just ask the agent something; it will request the key once via its
-     `toolbelt_setup` tool and save it for you.
-   - **OAuth sign-in (best for distributing to others):** deploy `gateway/` and connect
-     via URL — users sign in on a web page, no key ever touches a chat. See
-     [gateway/README.md](gateway/README.md).
-4. Start a **new** conversation and ask something in the agent's lane —
-   *"What's on my calendar today?"* — and watch it route, load the persona, and answer.
+1. **Connector:** download the agent's `.mcpb` from [`dist/`](dist/) and double-click it
+   (Settings → Extensions). Enter your Toolbelt API key (Toolbelt → Settings → Connect to
+   Claude) — it's stored in your OS keychain.
+2. **Skill:** **Customize → Plugins → "+" → Add marketplace** → enter
+   `dataPhysicist/toolbelt-for-claude`, then install the agent's plugin (e.g. **Chief of
+   staff**).
+3. Start a **new** conversation, make sure the agent is toggled on in the chat's "+" →
+   Connectors menu, and ask something in its lane — *"What's on my calendar today?"*
 
-Each plugin ships two things: a **connector** (a dependency-free local proxy to the
-agent's live Toolbelt MCP endpoint — tools tagged with the agent's name, persona loaded
-live via `load_persona`) and a **routing skill** (so Claude knows *when* to use the agent
-without being told).
+Prefer OAuth over API keys (e.g. distributing to a team or using claude.ai web)? Deploy
+[`gateway/`](gateway/README.md) and add
+`https://<your-gateway>/workspaces/<id>/mcp` as a remote connector instead of the
+`.mcpb` — users sign in on a web page; no key ever touches Claude.
 
 Claude Code users: `claude plugin marketplace add dataPhysicist/toolbelt-for-claude`,
-then `claude plugin install chief-of-staff@apexti-toolbelt`.
+then `claude plugin install chief-of-staff@apexti-toolbelt`, plus the connector via
+`claude mcp add`.
 
 ## What's in this repo
 
 ```
-plugins/chief-of-staff/        Chief-of-Staff plugin (connector + routing skill)
+plugins/chief-of-staff/        Chief-of-Staff routing skill (skill-only plugin)
+plugins/smart-ticketing/       Smart-Ticketing routing skill (skill-only plugin)
 plugins/toolbelt-get-started/  Org onboarding plugin (connect, list agents, route work)
 gateway/                       OAuth gateway: real MCP OAuth for Toolbelt, zero server changes
-desktop-extension/             Legacy one-click .mcpb desktop extension (keychain-based)
-dist/                          Prebuilt .plugin files for direct upload
+dist/                          Prebuilt installers: per-agent .mcpb connectors + .plugin skills
+desktop-extension/             Legacy single-bundle extension (superseded by dist/*.mcpb)
 ```
 
 More agents are added by registering them in the generator's roster and rebuilding —
-each agent becomes its own plugin, installable and toggleable independently.
+each agent becomes its own connector + skill pair, installable and toggleable
+independently.
 
 ## How it works
 
 ```
 Claude (Desktop / Cowork / Code)
-   │  plugin: routing skill + local proxy (zero dependencies)
+   │  skill (from this marketplace): routes the request to the right agent
+   │  connector (.mcpb proxy, zero deps — or remote URL via gateway/)
    ▼
 Toolbelt workspace MCP endpoint  (Bearer auth, or OAuth via gateway/)
    │  the agent's tools · wrenches · files · delegations
@@ -90,8 +102,8 @@ Toolbelt workspace MCP endpoint  (Bearer auth, or OAuth via gateway/)
 Your governed services (Gmail, Calendar, Slack, CRM, …)
 ```
 
-The proxy never embeds anything: instructions, tools, and files are read live from
-Toolbelt on every use, so the agent in Claude is always exactly the agent you built.
+Nothing is embedded: instructions, tools, and files are read live from Toolbelt on every
+use, so the agent in Claude is always exactly the agent you built.
 
 ---
 
