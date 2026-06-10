@@ -1,7 +1,7 @@
 {
   "name": "smart-ticketing",
   "description": "A feedback-triage assistant: turns raw bug reports and feature ideas into clean, deduplicated, structured tickets — and keeps the triage board honest. Routing skill — pair with the Smart-Ticketing connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "author": {
     "name": "Apexti",
     "url": "https://apexti.com"

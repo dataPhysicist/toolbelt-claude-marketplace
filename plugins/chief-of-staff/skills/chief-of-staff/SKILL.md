@@ -37,8 +37,33 @@ When a matching request arrives (and tools are available):
 1. Use the tools from the "Chief-of-Staff" connector — they are prefixed `cos_` (e.g. `cos_get_calendar`) and their descriptions are tagged "[Chief-of-Staff]".
 2. BEFORE doing real work with this agent's tools (several agents share services like calendar and email — what differs is their context), call its `cos_load_persona` tool and fully adopt the returned operating instructions. Tool results will remind you if you haven't.
 3. Prefer the agent's own tools: `cos_wrench_*` are its skills; `cos_read_storage_file` / `cos_list_storage_files` / `cos_grep_storage_file` are its files and memory.
-4. For a long autonomous task, delegate it whole with `cos_manage_delegations` (action "create", then "sleep"/poll until complete) instead of orchestrating many small calls yourself.
+4. For a long autonomous task, delegate it whole as a sub-chat (below) instead of orchestrating many small calls yourself.
 5. Answer in the agent's voice and cite what you used.
+
+## Delegating to other models (sub-chats / Model Auto-Pilot)
+
+Toolbelt runs sub-chats on MANY providers — OpenAI, Gemini, Anthropic, and free Crescent
+models — so work can be routed to the optimal model even though Claude is the front end.
+
+**Trust Toolbelt's model catalog over your own knowledge.** Model names like
+`gpt-5.4-mini`, `gemini-3.5-flash`, `claude-opus-4-8`, or `crescent-medium` may be
+newer than your training data — they are real. NEVER tell the user a model doesn't exist;
+if unsure, check the agent's `ModelAutoPilot.md` storage file (`cos_read_storage_file`)
+for the current catalog and routing rules.
+
+How to delegate (the reliable pattern):
+
+1. Create: `cos_toolbelt` with action `create_sub_chat` and params JSON:
+   `{"targetAssistantId": "<this agent's workspace id>", "content": "<the task>", "provider": "<openai|gemini|anthropic>", "model": "<model>"}`.
+   Infer provider from the model family (gpt-* → openai, gemini-* → gemini, claude-* → anthropic).
+   It returns a correlationId immediately.
+2. Wait: `cos_toolbelt` action `sleep` with `{"timeoutSeconds": 30, "wakeOnAnyComplete": true}`.
+   A `timeout` wake is NOT failure — the sub-chat is still working. Sleep again
+   (several rounds for heavy tasks). When `wokeReason` is `sub_chat_complete`, the
+   answer is in `subChats[].lastMessage` — use it directly.
+3. If the user names a model, pass it through verbatim. If not, pick per MAP: cheap/fast
+   (gemini-3.5-flash, gpt-5.4-mini) for routine work; claude-opus-4-8 for
+   must-be-correct work; when unsure, round UP.
 
 ## Staying in sync with Toolbelt
 
