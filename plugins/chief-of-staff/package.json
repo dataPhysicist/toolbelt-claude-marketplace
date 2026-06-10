@@ -1,16 +1,5 @@
 {
-  "name": "toolbelt-assistant-mcpb",
-  "version": "1.0.0",
+  "name": "apexti-chief-of-staff",
   "private": true,
-  "type": "module",
-  "description": "Toolbelt Assistant — a thin local MCP proxy that brings one live Toolbelt assistant (tools, skills, persona) into Claude. Packaged as an .mcpb.",
-  "scripts": {
-    "test": "node test/mock.test.mjs",
-    "test:packed": "node test/packed.test.mjs",
-    "pack": "npx -y @anthropic-ai/mcpb pack",
-    "pack:all": "node pack-assistant.mjs --all"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
-  }
+  "type": "module"
 }

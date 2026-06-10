@@ -1,226 +1,245 @@
 #!/usr/bin/env node
 /**
- * Toolbelt Assistant — a thin local stdio MCP proxy.
+ * Toolbelt Assistant proxy — DEPENDENCY-FREE (Node builtins only).
  *
- * Connects to ONE Toolbelt assistant's live workspace MCP endpoint and brings that
- * assistant into Claude: forwards all its tools/prompts, and surfaces its live
- * instructions (systemPrompt) as the server `instructions` hint + a persona prompt.
+ * Marketplace plugin syncs strip node_modules, so this server must run with zero deps:
+ * a raw newline-delimited JSON-RPC stdio server + a minimal MCP Streamable HTTP client.
  *
- * Hard rules honored here:
- *  - stdio connects IMMEDIATELY; no network before server.connect() (Desktop kills slow handshakes)
- *  - stdout is the wire protocol; all logs go to stderr
- *  - crash-proof: unhandledRejection/uncaughtException are logged, never fatal
- *  - instructions are fetched LIVE (re-fetched per persona invocation), never embedded
+ * Features: live tool passthrough (tagged "[Agent]"), load_persona (live fetch),
+ * static manifest-matching "persona" prompt, in-chat API-key setup (toolbelt_setup),
+ * connection diagnostics, elicitation/sampling/ping bridging (Toolbelt's
+ * "25 tool calls — continue?" gate), pre-persona context nudge, reconnect on drop.
+ *
+ * Hard rules: stdio answers initialize instantly (no network first); stdout is protocol
+ * (logs -> stderr); crash-proof; instructions fetched live, never embedded.
  */
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-  ElicitRequestSchema,
-  CreateMessageRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 
-const VERSION = "1.1.0";
+const VERSION = "2.0.0";
 const log = (...a) => process.stderr.write(`[toolbelt-assistant] ${a.join(" ")}\n`);
-
-// Crash guards: a background HTTP/SSE blip must never take the long-lived server down.
 process.on("unhandledRejection", (e) => log(`unhandledRejection: ${e?.message || e}`));
 process.on("uncaughtException", (e) => log(`uncaughtException: ${e?.message || e}`));
 
-// --- config (env; guard against unsubstituted ${user_config.*} placeholders) ---
-// API key resolution: env (mcpb keychain / plugin user_config) -> key file -> setup mode.
-// The key file lets ALL agent plugins share one credential, entered once.
+// ---------- config ----------
 const clean = (v) => (v && !v.includes("${") ? v.trim() : "");
 const KEY_FILE = join(process.env.TOOLBELT_KEY_FILE || join(homedir(), ".toolbelt"), "api_key");
-const readKeyFile = () => {
-  try { return readFileSync(KEY_FILE, "utf8").trim(); } catch { return ""; }
-};
+const readKeyFile = () => { try { return readFileSync(KEY_FILE, "utf8").trim(); } catch { return ""; } };
 let API_KEY = clean(process.env.TOOLBELT_API_KEY) || readKeyFile();
 const WORKSPACE_ID = clean(process.env.TOOLBELT_WORKSPACE_ID);
 const BASE_URL = (clean(process.env.TOOLBELT_BASE_URL) || "https://toolbelt.apexti.com").replace(/\/+$/, "");
 let NAME = clean(process.env.TOOLBELT_ASSISTANT_NAME);
 const MCP_URL = `${BASE_URL}/api/workspaces/${WORKSPACE_ID}/mcp`;
+if (!WORKSPACE_ID) { log("FATAL: TOOLBELT_WORKSPACE_ID is required."); process.exit(1); }
 
-if (!WORKSPACE_ID) {
-  log("FATAL: TOOLBELT_WORKSPACE_ID is required.");
-  process.exit(1);
-}
-// Missing key is NOT fatal: serve a setup tool so the user can paste it in chat.
-const needsSetup = () => !API_KEY;
-const SETUP_TOOL = "toolbelt_setup";
-const setupTool = () => ({
-  name: SETUP_TOOL,
-  description:
-    `⚠️ ${NAME || "This agent"} needs a Toolbelt API key before its tools can load. ` +
-    `Ask the user for their key (Toolbelt → Settings → Connect to Claude), then call this tool with it. ` +
-    `It is saved to ${KEY_FILE} (shared by all agent plugins) — never echo it back.`,
-  inputSchema: { type: "object", properties: { api_key: { type: "string", description: "The Toolbelt API key" } }, required: ["api_key"] },
-});
-
-// Static prompt: Claude Desktop only allows prompts DECLARED in the manifest AND requires
-// the returned content to match the declared template EXACTLY (anti prompt-injection).
-// So the prompt is a static pointer to the load_persona TOOL, which returns the live
-// instructions (tool results are not template-validated).
-// PROMPT_TEXT must stay byte-identical to manifest.json -> prompts[0].text.
 const PROMPT_NAME = "persona";
+// Must stay byte-identical to manifest.json -> prompts[0].text (Desktop validates exactly).
 const PROMPT_TEXT =
   "Call the load_persona tool from this connector now, then fully adopt the operating instructions it returns for the rest of this conversation.";
 const PERSONA_TOOL = "load_persona";
-
-// Long per-call timeout so long-running tools (e.g. manage_delegations) don't die.
-const CALL_OPTS = { timeout: 10 * 60 * 1000, resetTimeoutOnProgress: true };
-
-// --- upstream client (lazy connect, cached, reconnect on drop) ---
-let upstream = null;
-let connecting = null;
-
-async function connectUpstream() {
-  const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), {
-    requestInit: { headers: { Authorization: `Bearer ${API_KEY}` } },
-  });
-  transport.onerror = (e) => log(`upstream transport error: ${e?.message || e}`); // swallow
-  transport.onclose = () => {
-    if (upstream?.transport === transport) upstream = null;
-    log("upstream session closed");
-  };
-  // Bridge server->client requests (elicitation = Toolbelt's "continue after N tool
-  // calls?" guard, and sampling) through to Claude, IF the connected Claude client
-  // supports them. Without this, an upstream elicitation would dead-end and hang the call.
-  const downCaps = server.getClientCapabilities() || {};
-  const caps = {};
-  if (downCaps.elicitation) caps.elicitation = {};
-  if (downCaps.sampling) caps.sampling = {};
-  const client = new Client({ name: "toolbelt-assistant-proxy", version: VERSION }, { capabilities: caps });
-  client.onerror = (e) => log(`upstream client error: ${e?.message || e}`); // swallow
-  if (downCaps.elicitation)
-    client.setRequestHandler(ElicitRequestSchema, (req) => {
-      log("forwarding upstream elicitation to Claude");
-      return server.elicitInput(req.params, CALL_OPTS);
-    });
-  if (downCaps.sampling)
-    client.setRequestHandler(CreateMessageRequestSchema, (req) => server.createMessage(req.params, CALL_OPTS));
-  log(`downstream caps: elicitation=${!!downCaps.elicitation} sampling=${!!downCaps.sampling}`);
-  try {
-    await client.connect(transport);
-  } catch (e) {
-    if (/\b401\b|\b403\b|unauthor|forbidden/i.test(e?.message || ""))
-      throw new Error("Toolbelt rejected the credentials (401/403). Check your API key and workspace ID.");
-    throw new Error(`Toolbelt not reachable at ${MCP_URL}: ${e.message}`);
-  }
-  upstream = client;
-  log("connected to Toolbelt workspace MCP");
-  return client;
-}
-
-function ensureUpstream() {
-  if (upstream) return Promise.resolve(upstream);
-  if (!connecting) connecting = connectUpstream().finally(() => (connecting = null));
-  return connecting;
-}
-
-const sessionErr = (e) =>
-  e?.code === -32000 ||
-  e?.code === -32001 ||
-  /fetch failed|terminated|ECONNRESET|socket hang up|session|closed|network|aborted/i.test(e?.message || "");
-
-async function withUpstream(fn) {
-  const c = await ensureUpstream();
-  try {
-    return await fn(c);
-  } catch (e) {
-    if (!sessionErr(e)) throw e;
-    log(`upstream error (${e.message}); reconnecting once…`);
-    try { await c.close?.(); } catch { /* ignore */ }
-    upstream = null;
-    return fn(await ensureUpstream());
-  }
-}
-
-// --- live persona (never embedded; short cache only to absorb bursts) ---
-let personaCache = { text: null, at: 0 };
-let personaLoaded = false; // has the client loaded the agent's context this session?
-const PERSONA_TTL_MS = 60 * 1000;
-
-async function fetchPersona() {
-  if (personaCache.text !== null && Date.now() - personaCache.at < PERSONA_TTL_MS) return personaCache.text;
-  let text = "";
-  try {
-    const res = await withUpstream((c) =>
-      c.callTool(
-        { name: "toolbelt", arguments: { action: "get_assistant", params: JSON.stringify({ assistantId: WORKSPACE_ID }) } },
-        undefined,
-        CALL_OPTS,
-      ),
-    );
-    const raw = res?.structuredContent ?? res?.content?.find?.((x) => x.type === "text")?.text;
-    const data = typeof raw === "string" ? JSON.parse(raw) : raw || {};
-    if (typeof data.systemPrompt === "string") text = data.systemPrompt;
-    if (!NAME && data.name) NAME = String(data.name);
-  } catch (e) {
-    log(`get_assistant persona fetch failed (${e.message}); trying mcp-config…`);
-    try {
-      const r = await fetch(`${BASE_URL}/api/workspaces/${WORKSPACE_ID}/mcp-config`, {
-        headers: { Authorization: `Bearer ${API_KEY}` },
-      });
-      if (r.ok) text = (await r.json())?.mcpConfig?.systemPrompt || "";
-      else log(`mcp-config fallback HTTP ${r.status}`);
-    } catch (e2) {
-      log(`mcp-config fallback failed: ${e2.message}`);
-    }
-  }
-  personaCache = { text, at: Date.now() };
-  return text;
-}
-
-const personaMessage = (p) => {
-  const who = NAME || "this Toolbelt assistant";
-  if (!p)
-    return `Could not fetch live instructions for ${who} right now. Proceed using its tools; retry this prompt to load the persona.`;
-  return (
-    `From now on in this conversation, act as **${who}**, a Toolbelt assistant. ` +
-    `Its tools, skills (wrench_*), and storage files are available to you via this connector — use them as your own. ` +
-    `These are its current operating instructions (fetched live from Toolbelt):\n\n---\n\n${p}`
-  );
-};
-
-// --- downstream server: connect stdio FIRST, network later ---
-// Note: the toggle/Settings label comes from the manifest display_name (fixed at pack
-// time) — runtime config can't change it; serverInfo below only affects logs/handshake.
-const slugName = NAME ? NAME.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : "";
-const server = new Server(
-  { name: slugName ? `apexti-${slugName}` : "toolbelt-assistant", title: NAME || "Toolbelt Assistant", version: VERSION },
-  {
-    capabilities: { tools: {}, prompts: {} },
-    instructions:
-      `This connector brings the Toolbelt assistant "${NAME || "(name loads on first use)"}" into Claude — ` +
-      `its live tools, skills, and files. To adopt its persona, call the "${PERSONA_TOOL}" tool ` +
-      `(it returns the assistant's current operating instructions, fetched live from Toolbelt) ` +
-      `and fully adopt what it returns. The "${PROMPT_NAME}" prompt does the same via one click.`,
-  },
-);
-
-// tools/list → forward (brief cache so repeated listings don't hammer upstream).
-// On upstream failure, surface a diagnostic tool instead of a silent empty list.
-let toolsCache = { tools: null, at: 0 };
-let lastUpstreamError = "";
-const TOOLS_TTL_MS = 30 * 1000;
+const SETUP_TOOL = "toolbelt_setup";
 const STATUS_TOOL = "toolbelt_connection_status";
-const statusTool = () => ({
-  name: STATUS_TOOL,
-  description:
-    `⚠️ Could not load tools from Toolbelt: ${lastUpstreamError || "unknown error"} — ` +
-    `endpoint ${MCP_URL}. Call this tool to retry and see details. ` +
-    `Common causes: wrong workspace ID, invalid API key, Toolbelt unreachable.`,
-  inputSchema: { type: "object", properties: {} },
-});
+const CALL_TIMEOUT_MS = 10 * 60 * 1000;
+
+// ---------- downstream stdio (newline-delimited JSON-RPC) ----------
+let clientCaps = {};
+let nextDownId = 1;
+const downPending = new Map(); // id -> {resolve, reject}
+const send = (msg) => process.stdout.write(JSON.stringify(msg) + "\n");
+const sendResult = (id, result) => send({ jsonrpc: "2.0", id, result });
+const sendError = (id, code, message) => send({ jsonrpc: "2.0", id, error: { code, message } });
+function requestDownstream(method, params, timeoutMs = CALL_TIMEOUT_MS) {
+  const id = `s${nextDownId++}`;
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => { downPending.delete(id); reject(new Error(`${method} timed out`)); }, timeoutMs);
+    downPending.set(id, { resolve: (r) => { clearTimeout(t); resolve(r); }, reject: (e) => { clearTimeout(t); reject(e); } });
+    send({ jsonrpc: "2.0", id, method, params });
+  });
+}
+
+// ---------- upstream: minimal MCP Streamable HTTP client ----------
+let session = { id: null, initialized: false, initializing: null };
+let nextUpId = 1;
+
+function sseEvents(text) {
+  // Parse a complete SSE body into data payloads.
+  const out = [];
+  for (const block of text.split(/\r?\n\r?\n/)) {
+    const datas = block.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim());
+    if (datas.length) out.push(datas.join("\n"));
+  }
+  return out;
+}
+
+async function postUpstream(message, { expectId = null, timeoutMs = CALL_TIMEOUT_MS } = {}) {
+  const headers = {
+    "content-type": "application/json",
+    accept: "application/json, text/event-stream",
+    authorization: `Bearer ${API_KEY}`,
+  };
+  if (session.id) headers["mcp-session-id"] = session.id;
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  let res;
+  try {
+    res = await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify(message), signal: ctl.signal });
+  } finally { /* timer cleared below */ }
+  const sid = res.headers.get("mcp-session-id");
+  if (sid) session.id = sid;
+  if (res.status === 401 || res.status === 403) {
+    clearTimeout(t);
+    throw new Error("Toolbelt rejected the credentials (401/403). Check the API key and workspace ID.");
+  }
+  if (res.status === 404 && session.id) { clearTimeout(t); throw Object.assign(new Error("session expired"), { sessionExpired: true }); }
+  if (res.status === 202 || expectId === null) { clearTimeout(t); res.body?.cancel?.().catch?.(() => {}); return null; }
+  if (!res.ok) { clearTimeout(t); throw new Error(`Toolbelt HTTP ${res.status} at ${MCP_URL}`); }
+
+  const ctype = (res.headers.get("content-type") || "").split(";")[0].trim();
+  try {
+    if (ctype === "application/json") {
+      const obj = await res.json();
+      for (const m of Array.isArray(obj) ? obj : [obj]) if (m.id === expectId) return m;
+      throw new Error("response missing expected id");
+    }
+    // text/event-stream: read incrementally; handle server->client requests mid-stream.
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.search(/\r?\n\r?\n/)) !== -1) {
+        const block = buf.slice(0, idx);
+        buf = buf.slice(idx + (buf[idx] === "\r" ? 4 : 2));
+        const data = block.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("\n");
+        if (!data) continue;
+        let msg;
+        try { msg = JSON.parse(data); } catch { continue; }
+        if (msg.id !== undefined && msg.method) { handleUpstreamRequest(msg); continue; } // server request
+        if (msg.method) continue; // notification
+        if (msg.id === expectId) { ctl.abort(); return msg; } // our response
+      }
+    }
+    throw new Error("stream ended without response");
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function handleUpstreamRequest(msg) {
+  // Bridge upstream server->client requests (elicitation, sampling, ping) to Claude.
+  try {
+    let result;
+    if (msg.method === "ping") result = {};
+    else if (msg.method === "elicitation/create" && clientCaps.elicitation) {
+      log("forwarding upstream elicitation to Claude");
+      result = await requestDownstream("elicitation/create", msg.params);
+    } else if (msg.method === "sampling/createMessage" && clientCaps.sampling) {
+      result = await requestDownstream("sampling/createMessage", msg.params);
+    } else {
+      await postUpstream({ jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: `${msg.method} not supported by client` } });
+      return;
+    }
+    await postUpstream({ jsonrpc: "2.0", id: msg.id, result });
+  } catch (e) {
+    log(`bridging ${msg.method} failed: ${e.message}`);
+    try { await postUpstream({ jsonrpc: "2.0", id: msg.id, error: { code: -32603, message: e.message } }); } catch { /* ignore */ }
+  }
+}
+
+async function initUpstream() {
+  if (session.initialized) return;
+  if (session.initializing) return session.initializing;
+  session.initializing = (async () => {
+    session.id = null;
+    const id = `u${nextUpId++}`;
+    const caps = {};
+    if (clientCaps.elicitation) caps.elicitation = {};
+    if (clientCaps.sampling) caps.sampling = {};
+    const resp = await postUpstream(
+      { jsonrpc: "2.0", id, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: caps, clientInfo: { name: "toolbelt-assistant-proxy", version: VERSION } } },
+      { expectId: id, timeoutMs: 30000 },
+    );
+    if (resp.error) throw new Error(resp.error.message || "initialize failed");
+    await postUpstream({ jsonrpc: "2.0", method: "notifications/initialized" });
+    session.initialized = true;
+    log("connected to Toolbelt workspace MCP");
+    startSseListener(); // server-initiated requests (elicitation etc.) arrive here
+  })().finally(() => (session.initializing = null));
+  return session.initializing;
+}
+
+// Standalone GET stream: how the server reaches US (elicitation, notifications).
+let sseAbort = null;
+async function startSseListener() {
+  if (sseAbort) { try { sseAbort.abort(); } catch { /* ignore */ } }
+  const mySession = session;
+  const ctl = new AbortController();
+  sseAbort = ctl;
+  (async () => {
+    while (session === mySession && session.initialized) {
+      try {
+        const headers = { accept: "text/event-stream", authorization: `Bearer ${API_KEY}` };
+        if (session.id) headers["mcp-session-id"] = session.id;
+        const res = await fetch(MCP_URL, { method: "GET", headers, signal: ctl.signal });
+        if (res.status === 405) return; // server doesn't offer a standalone stream
+        if (!res.ok) throw new Error(`GET stream HTTP ${res.status}`);
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          let idx;
+          while ((idx = buf.search(/\r?\n\r?\n/)) !== -1) {
+            const block = buf.slice(0, idx);
+            buf = buf.slice(idx + (buf[idx] === "\r" ? 4 : 2));
+            const data = block.split(/\r?\n/).filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("\n");
+            if (!data) continue;
+            let msg;
+            try { msg = JSON.parse(data); } catch { continue; }
+            if (msg.id !== undefined && msg.method) handleUpstreamRequest(msg);
+          }
+        }
+      } catch (e) {
+        if (ctl.signal.aborted || session !== mySession) return;
+        log(`SSE listener dropped (${e.message}); retrying in 2s`);
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+  })().catch((e) => log(`SSE listener crashed: ${e.message}`));
+}
+
+async function rpcUpstream(method, params, timeoutMs = CALL_TIMEOUT_MS) {
+  const attempt = async () => {
+    await initUpstream();
+    const id = `u${nextUpId++}`;
+    const resp = await postUpstream({ jsonrpc: "2.0", id, method, params }, { expectId: id, timeoutMs });
+    if (resp.error) { const e = new Error(resp.error.message || `upstream error ${resp.error.code}`); e.code = resp.error.code; throw e; }
+    return resp.result;
+  };
+  try {
+    return await attempt();
+  } catch (e) {
+    if (e.sessionExpired || /session expired|fetch failed|ECONNRESET|socket|network|aborted/i.test(e.message || "")) {
+      log(`upstream error (${e.message}); reconnecting once…`);
+      session = { id: null, initialized: false, initializing: null };
+      return attempt();
+    }
+    throw e;
+  }
+}
+
+// ---------- agent features ----------
+let personaLoaded = false;
+let lastUpstreamError = "";
+let toolsCache = { tools: null, at: 0 };
+const TOOLS_TTL_MS = 30 * 1000;
+const needsSetup = () => !API_KEY;
 
 const personaTool = () => ({
   name: PERSONA_TOOL,
@@ -229,120 +248,183 @@ const personaTool = () => ({
     `Call this when asked to act as the assistant, then fully adopt the returned instructions for the conversation.`,
   inputSchema: { type: "object", properties: {} },
 });
-
-// Tag forwarded tools with the agent's name — descriptions are the one signal every
-// Claude client reads, so this is what routes "what's on my calendar?" to this agent.
-const tagTools = (tools) =>
-  NAME ? tools.map((t) => ({ ...t, description: `[${NAME}] ${t.description || ""}` })) : tools;
-
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  if (needsSetup()) return { tools: [setupTool()] };
-  if (toolsCache.tools && Date.now() - toolsCache.at < TOOLS_TTL_MS)
-    return { tools: [personaTool(), ...tagTools(toolsCache.tools)] };
-  try {
-    const { tools = [] } = await withUpstream((c) => c.listTools());
-    toolsCache = { tools, at: Date.now() };
-    lastUpstreamError = "";
-    return { tools: [personaTool(), ...tagTools(tools)] };
-  } catch (e) {
-    lastUpstreamError = e.message;
-    log(`listTools failed: ${e.message}`);
-    return { tools: [personaTool(), ...(toolsCache.tools?.length ? tagTools(toolsCache.tools) : [statusTool()])] };
-  }
+const setupTool = () => ({
+  name: SETUP_TOOL,
+  description:
+    `⚠️ ${NAME || "This agent"} needs a Toolbelt API key before its tools can load. ` +
+    `Ask the user for their key (Toolbelt → Settings → Connect to Claude), then call this tool with it. ` +
+    `It is saved to ${KEY_FILE} (shared by all agent plugins) — never echo it back.`,
+  inputSchema: { type: "object", properties: { api_key: { type: "string", description: "The Toolbelt API key" } }, required: ["api_key"] },
 });
+const statusTool = () => ({
+  name: STATUS_TOOL,
+  description:
+    `⚠️ Could not load tools from Toolbelt: ${lastUpstreamError || "unknown error"} — endpoint ${MCP_URL}. ` +
+    `Call this tool to retry and see details. Common causes: wrong workspace ID, invalid API key, Toolbelt unreachable.`,
+  inputSchema: { type: "object", properties: {} },
+});
+const tagTools = (tools) => (NAME ? tools.map((t) => ({ ...t, description: `[${NAME}] ${t.description || ""}` })) : tools);
 
-// tools/call → forward with a long timeout
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  if (req.params.name === SETUP_TOOL) {
-    const key = String(req.params.arguments?.api_key || "").trim();
-    if (!key) return { isError: true, content: [{ type: "text", text: "No api_key provided." }] };
+async function fetchPersona() {
+  let text = "";
+  try {
+    const res = await rpcUpstream("tools/call", { name: "toolbelt", arguments: { action: "get_assistant", params: JSON.stringify({ assistantId: WORKSPACE_ID }) } });
+    const raw = res?.structuredContent ?? res?.content?.find?.((x) => x.type === "text")?.text;
+    const data = typeof raw === "string" ? JSON.parse(raw) : raw || {};
+    if (typeof data.systemPrompt === "string") text = data.systemPrompt;
+    if (!NAME && data.name) NAME = String(data.name);
+  } catch (e) {
+    log(`get_assistant persona fetch failed (${e.message}); trying mcp-config…`);
     try {
-      mkdirSync(dirname(KEY_FILE), { recursive: true, mode: 0o700 });
-      writeFileSync(KEY_FILE, key + "\n", { mode: 0o600 });
-    } catch (e) {
-      return { isError: true, content: [{ type: "text", text: `Could not save key file: ${e.message}` }] };
-    }
-    API_KEY = key;
-    try {
-      const { tools = [] } = await withUpstream((c) => c.listTools());
-      toolsCache = { tools, at: Date.now() };
-      return { content: [{ type: "text", text: `Key saved to ${KEY_FILE} and verified — ${tools.length} tools available. Tell the user to reload/toggle the connector so the full tool list appears.` }] };
-    } catch (e) {
-      return { isError: true, content: [{ type: "text", text: `Key saved to ${KEY_FILE}, but Toolbelt rejected it or is unreachable: ${e.message}` }] };
-    }
+      const r = await fetch(`${BASE_URL}/api/workspaces/${WORKSPACE_ID}/mcp-config`, { headers: { authorization: `Bearer ${API_KEY}` } });
+      if (r.ok) text = (await r.json())?.mcpConfig?.systemPrompt || "";
+      else log(`mcp-config fallback HTTP ${r.status}`);
+    } catch (e2) { log(`mcp-config fallback failed: ${e2.message}`); }
   }
-  if (needsSetup())
-    return { isError: true, content: [{ type: "text", text: `Setup required: call ${SETUP_TOOL} with the user's Toolbelt API key first.` }] };
-  if (req.params.name === PERSONA_TOOL) {
-    personaCache = { text: null, at: 0 }; // always re-fetch live
-    personaLoaded = true;
-    const p = await fetchPersona();
-    return p
-      ? { content: [{ type: "text", text: personaMessage(p) }] }
-      : { isError: true, content: [{ type: "text", text: `Could not fetch live instructions: ${lastUpstreamError || "Toolbelt unreachable"}. Retry, or check the connection with ${STATUS_TOOL}.` }] };
-  }
-  if (req.params.name === STATUS_TOOL) {
+  return text;
+}
+const personaMessage = (p) => {
+  const who = NAME || "this Toolbelt assistant";
+  if (!p) return `Could not fetch live instructions for ${who} right now. Proceed using its tools; retry load_persona to load the persona.`;
+  return (
+    `From now on in this conversation, act as **${who}**, a Toolbelt assistant. ` +
+    `Its tools, skills (wrench_*), and storage files are available to you via this connector — use them as your own. ` +
+    `These are its current operating instructions (fetched live from Toolbelt):\n\n---\n\n${p}`
+  );
+};
+
+// ---------- downstream request handlers ----------
+const handlers = {
+  initialize: async (params) => {
+    clientCaps = params?.capabilities || {};
+    return {
+      protocolVersion: params?.protocolVersion || "2025-06-18",
+      capabilities: { tools: {}, prompts: {} },
+      serverInfo: { name: NAME ? `apexti-${NAME.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "toolbelt-assistant", title: NAME || "Toolbelt Assistant", version: VERSION },
+      instructions:
+        `This connector brings the Toolbelt assistant "${NAME || "(name loads on first use)"}" into Claude — ` +
+        `its live tools, skills, and files. To adopt its persona, call the "${PERSONA_TOOL}" tool and fully adopt what it returns.`,
+    };
+  },
+  ping: async () => ({}),
+  "tools/list": async () => {
+    if (needsSetup()) return { tools: [setupTool()] };
+    if (toolsCache.tools && Date.now() - toolsCache.at < TOOLS_TTL_MS) return { tools: [personaTool(), ...tagTools(toolsCache.tools)] };
     try {
-      const { tools = [] } = await withUpstream((c) => c.listTools());
+      const { tools = [] } = await rpcUpstream("tools/list", {});
       toolsCache = { tools, at: Date.now() };
       lastUpstreamError = "";
-      return { content: [{ type: "text", text: `Connected. ${tools.length} tools available — reload/toggle this connector to refresh the tool list.` }] };
+      return { tools: [personaTool(), ...tagTools(tools)] };
     } catch (e) {
       lastUpstreamError = e.message;
-      return { isError: true, content: [{ type: "text", text: `Still failing: ${e.message}\nEndpoint: ${MCP_URL}\nCheck the workspace ID and API key in the extension settings.` }] };
+      log(`tools/list failed: ${e.message}`);
+      return { tools: [personaTool(), ...(toolsCache.tools?.length ? tagTools(toolsCache.tools) : [statusTool()])] };
     }
-  }
-  try {
-    const res = await withUpstream((c) =>
-      c.callTool({ name: req.params.name, arguments: req.params.arguments ?? {} }, undefined, CALL_OPTS),
-    );
-    // Until the agent's persona is loaded, nudge: each agent has its own skills,
-    // knowledge, and context — Claude should load it before doing real work as it.
-    if (!personaLoaded && Array.isArray(res?.content)) {
-      res.content = [
-        ...res.content,
-        {
-          type: "text",
-          text: `[note] You have not loaded ${NAME || "this agent"}'s operating context yet. Call ${PERSONA_TOOL} to get its current instructions, skills, and knowledge before continuing to act as it.`,
-        },
-      ];
+  },
+  "tools/call": async (params) => {
+    const name = params?.name;
+    const args = params?.arguments ?? {};
+    if (name === SETUP_TOOL) {
+      const key = String(args.api_key || "").trim();
+      if (!key) return { isError: true, content: [{ type: "text", text: "No api_key provided." }] };
+      try {
+        mkdirSync(dirname(KEY_FILE), { recursive: true, mode: 0o700 });
+        writeFileSync(KEY_FILE, key + "\n", { mode: 0o600 });
+      } catch (e) { return { isError: true, content: [{ type: "text", text: `Could not save key file: ${e.message}` }] }; }
+      API_KEY = key;
+      session = { id: null, initialized: false, initializing: null };
+      try {
+        const { tools = [] } = await rpcUpstream("tools/list", {});
+        toolsCache = { tools, at: Date.now() };
+        return { content: [{ type: "text", text: `Key saved to ${KEY_FILE} and verified — ${tools.length} tools available. Tell the user to reload/toggle the connector (or start a new chat) so the full tool list appears.` }] };
+      } catch (e) {
+        return { isError: true, content: [{ type: "text", text: `Key saved to ${KEY_FILE}, but Toolbelt rejected it or is unreachable: ${e.message}` }] };
+      }
     }
-    return res;
-  } catch (e) {
-    return { isError: true, content: [{ type: "text", text: `Toolbelt error: ${e.message}` }] };
-  }
-});
-
-// prompts/list → [persona, ...upstream]
-server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  const persona = {
-    name: PROMPT_NAME,
-    title: `Act as ${NAME || "the Toolbelt assistant"}`,
-    description: `Act as the "${NAME || "Toolbelt"}" assistant — loads its current instructions live from Toolbelt.`,
-  };
-  let up = [];
-  try {
-    up = (await withUpstream((c) => c.listPrompts())).prompts ?? [];
-  } catch { /* upstream may not expose prompts */ }
-  return { prompts: [persona, ...up.filter((p) => p.name !== PROMPT_NAME)] };
-});
-
-// prompts/get → persona (live fetch) or forward
-server.setRequestHandler(GetPromptRequestSchema, async (req) => {
-  if (req.params.name === PROMPT_NAME) {
-    // Must return EXACTLY the manifest-declared template — Desktop rejects anything else.
-    return {
-      description: `Act as ${NAME || "the Toolbelt assistant"}`,
-      messages: [{ role: "user", content: { type: "text", text: PROMPT_TEXT } }],
+    if (needsSetup()) return { isError: true, content: [{ type: "text", text: `Setup required: call ${SETUP_TOOL} with the user's Toolbelt API key first.` }] };
+    if (name === PERSONA_TOOL) {
+      personaLoaded = true;
+      const p = await fetchPersona();
+      return p
+        ? { content: [{ type: "text", text: personaMessage(p) }] }
+        : { isError: true, content: [{ type: "text", text: `Could not fetch live instructions. Retry, or check the connection with ${STATUS_TOOL}.` }] };
+    }
+    if (name === STATUS_TOOL) {
+      try {
+        const { tools = [] } = await rpcUpstream("tools/list", {});
+        toolsCache = { tools, at: Date.now() };
+        lastUpstreamError = "";
+        return { content: [{ type: "text", text: `Connected. ${tools.length} tools available — reload/toggle this connector to refresh the tool list.` }] };
+      } catch (e) {
+        lastUpstreamError = e.message;
+        return { isError: true, content: [{ type: "text", text: `Still failing: ${e.message}\nEndpoint: ${MCP_URL}\nCheck the workspace ID and API key.` }] };
+      }
+    }
+    try {
+      const res = await rpcUpstream("tools/call", { name, arguments: args });
+      if (!personaLoaded && Array.isArray(res?.content)) {
+        res.content = [...res.content, { type: "text", text: `[note] You have not loaded ${NAME || "this agent"}'s operating context yet. Call ${PERSONA_TOOL} to get its current instructions, skills, and knowledge before continuing to act as it.` }];
+      }
+      return res;
+    } catch (e) {
+      return { isError: true, content: [{ type: "text", text: `Toolbelt error: ${e.message}` }] };
+    }
+  },
+  "prompts/list": async () => {
+    const persona = {
+      name: PROMPT_NAME,
+      title: `Act as ${NAME || "the Toolbelt assistant"}`,
+      description: `Act as the "${NAME || "Toolbelt"}" assistant — loads its current instructions live from Toolbelt.`,
     };
+    let up = [];
+    try { if (!needsSetup()) up = (await rpcUpstream("prompts/list", {})).prompts ?? []; } catch { /* none */ }
+    return { prompts: [persona, ...up.filter((p) => p.name !== PROMPT_NAME)] };
+  },
+  "prompts/get": async (params) => {
+    if (params?.name === PROMPT_NAME) {
+      return { description: `Act as ${NAME || "the Toolbelt assistant"}`, messages: [{ role: "user", content: { type: "text", text: PROMPT_TEXT } }] };
+    }
+    return rpcUpstream("prompts/get", { name: params?.name, arguments: params?.arguments ?? {} });
+  },
+};
+
+// ---------- stdio loop ----------
+let stdinBuf = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  stdinBuf += chunk;
+  let nl;
+  while ((nl = stdinBuf.indexOf("\n")) !== -1) {
+    const line = stdinBuf.slice(0, nl).trim();
+    stdinBuf = stdinBuf.slice(nl + 1);
+    if (!line) continue;
+    let msg;
+    try { msg = JSON.parse(line); } catch { log("bad JSON on stdin"); continue; }
+    handleDownstream(msg).catch((e) => log(`handler crash: ${e?.message || e}`));
   }
-  return withUpstream((c) => c.getPrompt({ name: req.params.name, arguments: req.params.arguments ?? {} }));
 });
+process.stdin.on("end", () => { log("stdin closed; exiting"); process.exit(0); });
 
-await server.connect(new StdioServerTransport());
-log(`toolbelt-assistant ${VERSION} ready on stdio · upstream ${MCP_URL} · prompt ${PROMPT_NAME}`);
+async function handleDownstream(msg) {
+  // Response to a request WE sent downstream (elicitation/sampling bridge)
+  if (msg.id !== undefined && !msg.method) {
+    const p = downPending.get(msg.id);
+    if (p) {
+      downPending.delete(msg.id);
+      if (msg.error) p.reject(new Error(msg.error.message || "client error"));
+      else p.resolve(msg.result);
+    }
+    return;
+  }
+  if (msg.method?.startsWith("notifications/")) return; // ignore (incl. initialized, cancelled)
+  const h = handlers[msg.method];
+  if (msg.id === undefined) return; // unknown notification
+  if (!h) return sendError(msg.id, -32601, `Method not found: ${msg.method}`);
+  try {
+    sendResult(msg.id, await h(msg.params));
+  } catch (e) {
+    sendError(msg.id, -32603, e?.message || "internal error");
+  }
+}
 
-// Background warm-up (after handshake): cache tools + persona so first use is snappy.
-setTimeout(() => {
-  fetchPersona().catch(() => {});
-}, 250);
+log(`toolbelt-assistant ${VERSION} (dependency-free) ready on stdio · upstream ${MCP_URL}${needsSetup() ? " · NO API KEY (setup mode)" : ""}`);
