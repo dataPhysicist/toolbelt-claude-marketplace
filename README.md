@@ -45,25 +45,30 @@ never leaves the server.
 Each agent ships as **two small pieces** that work together:
 
 1. **The connector** — a one-click `.mcpb` desktop extension (in `dist/`). It proxies the
-   agent's live Toolbelt MCP endpoint: tools tagged with the agent's name, persona loaded
-   live via `load_persona`, read-only tools annotated so Claude prompts less. Your API
-   key goes into the **OS keychain** at install. Because it's a regular connector, each
-   agent gets its own **on/off toggle in every chat's "+" menu** and fully inspectable
-   tool calls.
+   agent's live Toolbelt MCP endpoint: persona loaded live, read-only tools annotated so
+   Claude prompts less, and every tool **namespaced with the agent's initials**
+   (`cos_get_calendar`, `st_wrench_execute`) so any number of agents coexist without
+   tool-name collisions. Your API key goes into the **OS keychain** at install. Because
+   it's a regular connector, each agent gets its own **on/off toggle in every chat's "+"
+   menu** and fully inspectable tool calls.
 2. **The routing skill** — a plugin from this marketplace. It teaches Claude *when* to
-   use the agent ("what's on my calendar?" → Chief-of-Staff) without being told, and
-   updates automatically when this repo changes.
+   use the agent ("what's on my calendar?" → Chief-of-Staff) without being told, ships
+   the connector installer inside it, and updates automatically when this repo changes.
 
 ## Install (Claude Desktop / Cowork)
 
-1. **Connector:** download the agent's `.mcpb` from [`dist/`](dist/) and double-click it
-   (Settings → Extensions). Enter your Toolbelt API key (Toolbelt → Settings → Connect to
-   Claude) — it's stored in your OS keychain.
-2. **Skill:** **Customize → Plugins → "+" → Add marketplace** → enter
+1. **Customize → Plugins → "+" → Add marketplace** → enter
    `dataPhysicist/toolbelt-for-claude`, then install the agent's plugin (e.g. **Chief of
    staff**).
-3. Start a **new** conversation, make sure the agent is toggled on in the chat's "+" →
-   Connectors menu, and ask something in its lane — *"What's on my calendar today?"*
+2. Start a chat and ask something in the agent's lane — *"What's on my calendar
+   today?"* On first run the skill hands you the bundled connector installer right in
+   the chat: double-click it, enter your Toolbelt API key (Toolbelt → Settings → Connect
+   to Claude; stored in the OS keychain).
+3. Start a **new** conversation (connectors attach at chat start), confirm the agent is
+   toggled on in the "+" → Connectors menu, and ask again.
+
+(Manual alternative: grab the `.mcpb` straight from [`dist/`](dist/) and double-click it
+before installing the plugin.)
 
 Prefer OAuth over API keys (e.g. distributing to a team or using claude.ai web)? Deploy
 [`gateway/`](gateway/README.md) and add
@@ -94,7 +99,7 @@ independently.
 ```
 Claude (Desktop / Cowork / Code)
    │  skill (from this marketplace): routes the request to the right agent
-   │  connector (.mcpb proxy, zero deps — or remote URL via gateway/)
+   │  connector (.mcpb proxy, zero deps, namespaced cos_*/st_* — or remote URL via gateway/)
    ▼
 Toolbelt workspace MCP endpoint  (Bearer auth, or OAuth via gateway/)
    │  the agent's tools · wrenches · files · delegations
