@@ -5,13 +5,17 @@ tools — so Claude stops being a brilliant stranger and starts being your team.
 
 ## Why connect Claude to Toolbelt?
 
-Claude alone is a world-class generalist with amnesia. Every chat starts from zero: it
-doesn't know your business, it has no memory of last week, it isn't connected to your
-email, calendar, CRM, or files, and anything you teach it evaporates when the
-conversation ends.
+Claude is a world-class generalist, and with enough patience you can dress it up
+yourself: a Project here, some memory there, a few connectors, custom instructions,
+maybe a skill or two. Plenty of people do — and what they end up with is a careful,
+personal setup that lives inside *one person's* Claude. It can't be handed to a
+teammate, it isn't versioned or audited, it doesn't run anywhere else, and when the
+person who built it leaves, it leaves with them.
 
-A **Toolbelt agent** is what you get when you take that raw intelligence and give it a
-job. Each agent you build in [Toolbelt](https://apexti.com) has:
+A **Toolbelt agent** is that same idea done as infrastructure instead of personal
+craft. You build the agent once in [Toolbelt](https://apexti.com), and everyone it's
+shared with gets the identical, governed, always-current version — in Claude, and in
+every other interface Toolbelt serves. Each agent has:
 
 - **Its own operating instructions** — who it is, how your business works, what good output looks like
 - **Skills ("wrenches")** — your proven, repeatable workflows, codified and versioned
@@ -26,14 +30,15 @@ Everything stays live: edit the agent in Toolbelt and Claude picks up the new
 instructions on the next call. Nothing is copied, nothing goes stale, and governance
 never leaves the server.
 
-| | Claude alone | Claude + a Toolbelt agent |
+| | Do-it-yourself Claude setup | Claude + a Toolbelt agent |
 |---|---|---|
-| Persona | generic assistant | your agent's operating instructions, fetched live |
-| Skills | starts from scratch | your versioned workflows (wrenches) |
-| Memory | none between chats | the agent's persistent files and memory |
-| Tools | whatever you wire up per chat | the agent's governed services (email, calendar, Slack, CRM…) |
-| Oversight | none | permissions, audit trail, spend control — server-side |
-| Teamwork | one assistant | delegates to your other agents via Toolbelt |
+| Persona | custom instructions you maintain by hand | the agent's operating instructions, fetched live — edit once in Toolbelt, applies everywhere |
+| Skills | personal skills, per machine | versioned workflows (wrenches) shared by everyone using the agent |
+| Memory | your chats and Projects, yours alone | the agent's own files and memory — shared, persistent, interface-independent |
+| Tools | connectors each person wires up themselves | the agent's governed services, with permissions enforced server-side |
+| Oversight | none — every user is on their own | audit trail and spend control for everything every user does |
+| Teamwork | one person's assistant | a roster: agents delegate to each other, and the whole team uses the same ones |
+| Portability | locked to your Claude account | the same agent works in Claude, ChatGPT, Gemini, and Toolbelt itself |
 
 ## Install (Claude Desktop / Cowork)
 
