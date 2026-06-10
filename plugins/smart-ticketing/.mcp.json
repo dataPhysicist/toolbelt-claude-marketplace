@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "smart-ticketing": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/server/index.js"
+      ],
+      "env": {
+        "TOOLBELT_WORKSPACE_ID": "4b3e0b1c-6bb9-44b1-81bf-f695f404ddc6",
+        "TOOLBELT_ASSISTANT_NAME": "Smart-Ticketing",
+        "TOOLBELT_API_KEY": "${user_config.toolbelt_api_key}"
+      }
+    }
+  }
+}

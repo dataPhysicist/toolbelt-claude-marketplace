@@ -1,0 +1,19 @@
+{
+  "name": "smart-ticketing",
+  "description": "A feedback-triage assistant: turns raw bug reports and feature ideas into clean, deduplicated, structured tickets — and keeps the triage board honest. Powered by Apexti (apexti.com).",
+  "version": "2.0.0",
+  "author": {
+    "name": "Apexti",
+    "url": "https://apexti.com"
+  },
+  "homepage": "https://apexti.com",
+  "userConfig": {
+    "toolbelt_api_key": {
+      "type": "string",
+      "title": "Toolbelt API key",
+      "description": "The API key Smart-Ticketing uses to reach its tools and memory (Toolbelt → Settings → Connect to Claude).",
+      "sensitive": true,
+      "required": false
+    }
+  }
+}
