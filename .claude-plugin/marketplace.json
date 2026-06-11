@@ -49,6 +49,11 @@
       "name": "documentation-assistant",
       "source": "./plugins/documentation-assistant",
       "description": "Turns chat explanations into real product documentation — an expert technical documentarian (Splunk Style Guide: clarity, active voice, why-before-how) for guides, references, and runbooks. Routing skill — pair with the Documentation-Assistant connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+    },
+    {
+      "name": "claude-packager",
+      "source": "./plugins/claude-packager",
+      "description": "Builds Claude .mcpb connectors and marketplace plugins for any Toolbelt assistant — from chat. Give it an assistant name; it returns a one-click installer download link. Routing skill — pair with the Claude-Packager connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     }
   ]
 }
