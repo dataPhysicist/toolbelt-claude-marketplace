@@ -21,24 +21,30 @@ work=$(mktemp -d); mkdir -p "$work/server" "$OUT"
 cp "$ASSETS_DIR/server.js" "$work/server/index.js"
 cp "$ASSETS_DIR/icon.png" "$work/icon.png"
 
-# Assemble manifest: stamp name/desc/prefix; bake ONLY the agent name + prefix. The
-# workspace ID stays a user_config field (entered at install — differs per org).
-node - "$ASSETS_DIR/manifest.template.json" "$work/manifest.json" <<NODE
-const fs=require("fs");
-const [,,tpl,out]=process.argv;
-const m=JSON.parse(fs.readFileSync(tpl,"utf8"));
-const name=process.env.AGENT_NAME, prefix=process.env.PREFIX, desc=process.env.DESC, slug=process.env.SLUG, base=process.env.BASE_URL;
-m.name="apexti-"+slug; m.display_name=name; m.description=desc;
-m.server.mcp_config.env.TOOLBELT_ASSISTANT_NAME=name;
-if(process.env.AGENT_DESC) m.server.mcp_config.env.TOOLBELT_ASSISTANT_DESC=process.env.AGENT_DESC;
-if(process.env.AGENT_TRIGGERS) m.server.mcp_config.env.TOOLBELT_ASSISTANT_TRIGGERS=process.env.AGENT_TRIGGERS;
-m.server.mcp_config.env.TOOLBELT_TOOL_PREFIX=prefix;
-m.server.mcp_config.env.TOOLBELT_BASE_URL=base;
-delete m.user_config.assistant_name; // name is baked
-m.user_config.workspace_id.description=name+"'s workspace ID in your Toolbelt org (dashboard URL: workspaceId=…).";
-if(m.prompts&&m.prompts[0]){m.prompts[0].text=m.prompts[0].text.replace("load_persona",prefix+"load_persona");m.prompts[0].description=m.prompts[0].description.replace("load_persona",prefix+"load_persona");}
-fs.writeFileSync(out,JSON.stringify(m,null,2)+"\n");
-NODE
+# Assemble manifest with python3 (robust JSON; works in Toolbelt's execute_code sandbox,
+# where `node` is a Deno shim that rejects CommonJS require). Stamp name/desc/prefix; bake
+# the agent name + prefix + self-routing desc/triggers. Workspace ID stays user-entered.
+TPL="$ASSETS_DIR/manifest.template.json" OUTM="$work/manifest.json" python3 <<'PY'
+import json, os
+m = json.load(open(os.environ['TPL']))
+name = os.environ['AGENT_NAME']; prefix = os.environ['PREFIX']; slug = os.environ['SLUG']
+m['name'] = 'apexti-' + slug
+m['display_name'] = name
+m['description'] = os.environ['DESC']
+env = m['server']['mcp_config']['env']
+env['TOOLBELT_ASSISTANT_NAME'] = name
+env['TOOLBELT_TOOL_PREFIX'] = prefix
+env['TOOLBELT_BASE_URL'] = os.environ['BASE_URL']
+if os.environ.get('AGENT_DESC'): env['TOOLBELT_ASSISTANT_DESC'] = os.environ['AGENT_DESC']
+if os.environ.get('AGENT_TRIGGERS'): env['TOOLBELT_ASSISTANT_TRIGGERS'] = os.environ['AGENT_TRIGGERS']
+m['user_config'].pop('assistant_name', None)
+m['user_config']['workspace_id']['description'] = name + "'s workspace ID in your Toolbelt org (dashboard URL: workspaceId=…)."
+if m.get('prompts'):
+    for key in ('text', 'description'):
+        if key in m['prompts'][0]:
+            m['prompts'][0][key] = m['prompts'][0][key].replace('load_persona', prefix + 'load_persona')
+open(os.environ['OUTM'], 'w').write(json.dumps(m, indent=2) + "\n")
+PY
 
 ( cd "$work" && zip -qry "$OUT/$slug.mcpb" manifest.json server icon.png )
 base64 < "$OUT/$slug.mcpb" | tr -d '\n' > "$OUT/$slug.mcpb.b64"

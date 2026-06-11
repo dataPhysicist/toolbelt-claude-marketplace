@@ -28,14 +28,16 @@ if [ "$FORMAT" = "plugin" ]; then
   mkdir -p "$pdir/.claude-plugin" "$pdir/skills/$slug"
   desc="${AGENT_DESC:-$AGENT_NAME — a Toolbelt assistant.} Powered by Apexti (apexti.com)."
   SLUG="$slug" DESC="$desc" PJSON="$pdir/.claude-plugin/plugin.json" TPL="$work/SKILL.template.md" SKILL="$pdir/skills/$slug/SKILL.md" PREFIX="$prefix" \
-  node -e '
-    const fs=require("fs");const slug=process.env.SLUG,name=process.env.AGENT_NAME,desc=process.env.DESC;
-    fs.writeFileSync(process.env.PJSON, JSON.stringify({name:slug,description:desc,version:"1.0.0",author:{name:"Apexti",url:"https://apexti.com"},homepage:"https://apexti.com"},null,2)+"\n");
-    let s=fs.readFileSync(process.env.TPL,"utf8");
-    const map={AGENT:name,SLUG:slug,PREFIX:process.env.PREFIX,DESC:(process.env.AGENT_DESC||name),TRIGGERS:(process.env.AGENT_TRIGGERS||name+" tasks"),WORKSPACE_ID:"(entered at install)"};
-    s=s.replace(/\{\{(\w+)\}\}/g,(_,k)=>map[k]!==undefined?map[k]:_);
-    fs.writeFileSync(process.env.SKILL,s);
-  '
+  python3 <<'PY'
+import json, os, re
+slug=os.environ['SLUG']; name=os.environ['AGENT_NAME']; desc=os.environ['DESC']
+json.dump({"name":slug,"description":desc,"version":"1.0.0","author":{"name":"Apexti","url":"https://apexti.com"},"homepage":"https://apexti.com"},
+          open(os.environ['PJSON'],'w'), indent=2); open(os.environ['PJSON'],'a').write("\n")
+s=open(os.environ['TPL']).read()
+m={"AGENT":name,"SLUG":slug,"PREFIX":os.environ['PREFIX'],"DESC":os.environ.get('AGENT_DESC') or name,
+   "TRIGGERS":os.environ.get('AGENT_TRIGGERS') or (name+" tasks"),"WORKSPACE_ID":"(entered at install)"}
+open(os.environ['SKILL'],'w').write(re.sub(r'\{\{(\w+)\}\}', lambda x: m.get(x.group(1), x.group(0)), s))
+PY
   cp "$work/out/$slug.mcpb" "$pdir/skills/$slug/$slug.mcpb"
   ( cd "$work" && zip -qry "$work/out/$slug.plugin" "$slug" )
   artifact="$work/out/$slug.plugin"
