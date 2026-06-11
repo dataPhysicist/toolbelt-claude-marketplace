@@ -1,0 +1,10 @@
+{
+  "name": "engagement-advisor",
+  "description": "HubSpot deal coach for the Engagements pipeline: weekly digests, Grain/Slack context into HubSpot, next-step hygiene, and deal creation/updates. Routing skill — pair with the Engagement-Advisor connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
+  "version": "2.6.0",
+  "author": {
+    "name": "Apexti",
+    "url": "https://apexti.com"
+  },
+  "homepage": "https://apexti.com"
+}

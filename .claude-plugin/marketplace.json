@@ -24,6 +24,31 @@
       "name": "health-e",
       "source": "./plugins/health-e",
       "description": "Your personal electronic health coaching assistant. Chat-first health coaching grounded in first-principles thinking, authentic nutrition science, and surprising health facts most people were never told. Routing skill — pair with the Health-E connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+    },
+    {
+      "name": "toolbelt-strategy",
+      "source": "./plugins/toolbelt-strategy",
+      "description": "A business strategy advisor for founders: investor narratives, positioning, go-to-market, pricing, roadmap tradeoffs, and partnership decisions — with a council of founder and investor personas. Routing skill — pair with the Toolbelt-Strategy connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+    },
+    {
+      "name": "scarlett",
+      "source": "./plugins/scarlett",
+      "description": "Scarlett — an Apexti assistant. (EDIT ME: one sentence on what Scarlett does.) Routing skill — pair with the Scarlett connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+    },
+    {
+      "name": "apexti-design-content",
+      "source": "./plugins/apexti-design-content",
+      "description": "Design and content assistant for Apexti — brand-consistent graphics, copy, and content production. Routing skill — pair with the Apexti-Design-Content connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+    },
+    {
+      "name": "engagement-advisor",
+      "source": "./plugins/engagement-advisor",
+      "description": "HubSpot deal coach for the Engagements pipeline: weekly digests, Grain/Slack context into HubSpot, next-step hygiene, and deal creation/updates. Routing skill — pair with the Engagement-Advisor connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+    },
+    {
+      "name": "documentation-assistant",
+      "source": "./plugins/documentation-assistant",
+      "description": "Documentation assistant: drafts, structures, and maintains product and process documentation. Routing skill — pair with the Documentation-Assistant connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     }
   ]
 }

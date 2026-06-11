@@ -1,0 +1,10 @@
+{
+  "name": "toolbelt-strategy",
+  "description": "A business strategy advisor for founders: investor narratives, positioning, go-to-market, pricing, roadmap tradeoffs, and partnership decisions — with a council of founder and investor personas. Routing skill — pair with the Toolbelt-Strategy connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
+  "version": "2.6.0",
+  "author": {
+    "name": "Apexti",
+    "url": "https://apexti.com"
+  },
+  "homepage": "https://apexti.com"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "apexti-design-content",
+  "description": "Design and content assistant for Apexti — brand-consistent graphics, copy, and content production. Routing skill — pair with the Apexti-Design-Content connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
+  "version": "2.6.0",
+  "author": {
+    "name": "Apexti",
+    "url": "https://apexti.com"
+  },
+  "homepage": "https://apexti.com"
+}
