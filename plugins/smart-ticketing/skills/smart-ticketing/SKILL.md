@@ -65,13 +65,29 @@ How to delegate (the reliable pattern):
    (gemini-3.5-flash, gpt-5.4-mini) for routine work; claude-opus-4-8 for
    must-be-correct work; when unsure, round UP.
 
+## Working with the agent's storage (interop contract)
+
+The agent's storage is the durable "brain" — treat it with care (full contract:
+`Skills/ClientInterop.md` in the agent's storage):
+
+- **Read `INDEX.md` first** (`st_read_storage_file`) instead of listing or reading
+  all of storage.
+- **Save chat assets only when the user asks** ("save this to Toolbelt"): write to
+  `Inbox/<YYYY-MM-DD>/<filename>` — text via `st_write_text_file`, images/binary via
+  `st_upload_file_to_storage` (base64) — and append one line to `Inbox/MANIFEST.md`
+  (date | filename | source | sha256-12 | description). Never write outside `Inbox/`
+  except the agent's own Memory logs.
+- **Scope stays `assistant`** unless the user explicitly asks to share org-wide.
+- Expect the agent to answer with short summaries + storage handles rather than full
+  documents; ask for the full text explicitly when you need it.
+
 ## Staying in sync with Toolbelt
 
 Snapshot this skill was generated from (compare against the live `load_persona` result):
 
 - workspace: 4b3e0b1c-6bb9-44b1-81bf-f695f404ddc6
 - description at generation: "A feedback-triage assistant: turns raw bug reports and feature ideas into clean, deduplicated, structured tickets — and keeps the triage board honest."
-- generated: 2026-06-10
+- generated: 2026-06-11
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated
