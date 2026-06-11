@@ -23,8 +23,9 @@ steps as a wall — guide them):
    a clickable card; otherwise tell them the path, or give the download link as a
    fallback: https://github.com/dataPhysicist/toolbelt-for-claude/raw/main/dist/scarlett.mcpb
 2. **Install it:** double-click the file (Claude → Settings → Extensions → Install
-   Extension also works). When prompted, enter their Toolbelt API key
-   (Toolbelt → Settings → Connect to Claude) — it's stored in the OS keychain.
+   Extension also works). When prompted, enter their Toolbelt **API key**
+   (Toolbelt → Settings → Connect to Claude; stored in the OS keychain) and their
+   **Scarlett workspace ID** (from the Toolbelt dashboard URL: `workspaceId=…`).
 3. **Start a new chat** (connectors attach when a conversation starts) and make sure
    "Scarlett" is toggled ON in the chat's "+" → Connectors menu. Then ask the same
    question again.

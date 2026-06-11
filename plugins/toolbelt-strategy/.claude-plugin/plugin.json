@@ -1,7 +1,7 @@
 {
   "name": "toolbelt-strategy",
   "description": "Business strategy expert for Apexti's Toolbelt: investor updates, positioning, GTM, pricing, ICP, partnerships, roadmap, and strategic narrative — grounded in Apexti's strategy context. Routing skill — pair with the Toolbelt-Strategy connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "author": {
     "name": "Apexti",
     "url": "https://apexti.com"
