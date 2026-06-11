@@ -31,7 +31,9 @@ const WORKSPACE_ID = clean(process.env.TOOLBELT_WORKSPACE_ID);
 const BASE_URL = (clean(process.env.TOOLBELT_BASE_URL) || "https://toolbelt.apexti.com").replace(/\/+$/, "");
 let NAME = clean(process.env.TOOLBELT_ASSISTANT_NAME);
 const MCP_URL = `${BASE_URL}/api/workspaces/${WORKSPACE_ID}/mcp`;
-if (!WORKSPACE_ID) { log("FATAL: TOOLBELT_WORKSPACE_ID is required."); process.exit(1); }
+// Missing workspace ID is NOT fatal — exiting makes Claude show an opaque "server crashed".
+// Stay alive and surface a clear config tool instead (handled in needsSetup/tools list).
+if (!WORKSPACE_ID) log("no workspace ID configured — will surface a setup prompt.");
 
 // Tool-name NAMESPACE: every Toolbelt workspace serves the same tool names, and Claude
 // Desktop refuses duplicate tool names across enabled connectors ("Tool X is already
@@ -108,16 +110,36 @@ async function postUpstream(message, { expectId = null, timeoutMs = CALL_TIMEOUT
   if (sid) session.id = sid;
   if (res.status === 401 || res.status === 403) {
     clearTimeout(t);
-    throw new Error("Toolbelt rejected the credentials (401/403). Check the API key and workspace ID.");
+    res.body?.cancel?.().catch?.(() => {});
+    // 401 ≈ bad/missing API key; 403 ≈ key valid but no access to THIS workspace (often a
+    // wrong workspace ID for the org the key belongs to).
+    throw Object.assign(
+      new Error(
+        res.status === 401
+          ? "Toolbelt rejected the API key (401). The Toolbelt API key in this connector's settings is wrong or expired — fix it in Settings → Extensions → " + (NAME || "this connector") + ", or re-run setup."
+          : "Toolbelt denied access to this workspace (403). The API key is valid but can't reach workspace " + WORKSPACE_ID + " — the Workspace ID is likely wrong for this org, or the key lacks access. Check the Workspace ID in the connector's settings.",
+      ),
+      { credentialError: true },
+    );
   }
   // Spec says expired sessions -> 404, but servers also answer unknown ids with 400.
+  // A 404/400 only means "expired session" if we HAD a session; on the very first call it
+  // means the workspace endpoint itself isn't found → almost always a bad Workspace ID.
   if ((res.status === 404 || res.status === 400) && session.id) {
     clearTimeout(t);
     res.body?.cancel?.().catch?.(() => {});
     throw Object.assign(new Error(`session expired (HTTP ${res.status})`), { sessionExpired: true });
   }
+  if (res.status === 404) {
+    clearTimeout(t);
+    res.body?.cancel?.().catch?.(() => {});
+    throw Object.assign(
+      new Error(`Workspace not found (404): no Toolbelt workspace at ${WORKSPACE_ID}. The Workspace ID is wrong — check it in the connector's settings (Toolbelt dashboard URL: workspaceId=…).`),
+      { credentialError: true },
+    );
+  }
   if (res.status === 202 || expectId === null) { clearTimeout(t); res.body?.cancel?.().catch?.(() => {}); return null; }
-  if (!res.ok) { clearTimeout(t); throw new Error(`Toolbelt HTTP ${res.status} at ${MCP_URL}`); }
+  if (!res.ok) { clearTimeout(t); throw new Error(`Toolbelt HTTP ${res.status} at ${MCP_URL} — Toolbelt may be unreachable; retry shortly.`); }
 
   const ctype = (res.headers.get("content-type") || "").split(";")[0].trim();
   try {
@@ -271,7 +293,7 @@ let personaLoaded = false;
 let lastUpstreamError = "";
 let toolsCache = { tools: null, at: 0 };
 const TOOLS_TTL_MS = 30 * 1000;
-const needsSetup = () => !API_KEY;
+const needsSetup = () => !API_KEY || !WORKSPACE_ID;
 
 const personaTool = () => ({
   name: PERSONA_TOOL,
@@ -284,16 +306,21 @@ const personaTool = () => ({
 const setupTool = () => ({
   name: SETUP_TOOL,
   description:
-    `⚠️ ${NAME || "This agent"} needs a Toolbelt API key before its tools can load. ` +
-    `Ask the user for their key (Toolbelt → Settings → Connect to Claude), then call this tool with it. ` +
-    `It is saved to ${KEY_FILE} (shared by all agent plugins) — never echo it back.`,
+    (!WORKSPACE_ID
+      ? `⚠️ ${NAME || "This agent"} is missing its Workspace ID — open Settings → Extensions → ${NAME || "this connector"} and enter the Workspace ID (Toolbelt dashboard URL: workspaceId=…). `
+      : `⚠️ ${NAME || "This agent"} needs a Toolbelt API key before its tools can load. `) +
+    `If the user gives an API key, call this tool with it (saved to ${KEY_FILE}, shared by all agent connectors — never echo it back). The Workspace ID must be set in the connector's settings, not here.`,
   inputSchema: { type: "object", properties: { api_key: { type: "string", description: "The Toolbelt API key" } }, required: ["api_key"] },
 });
+// IMPORTANT: when the connection fails, this is the ONLY tool the connector exposes —
+// so its description must make Claude tell the user exactly what to fix.
 const statusTool = () => ({
   name: STATUS_TOOL,
   description:
-    `⚠️ Could not load tools from Toolbelt: ${lastUpstreamError || "unknown error"} — endpoint ${MCP_URL}. ` +
-    `Call this tool to retry and see details. Common causes: wrong workspace ID, invalid API key, Toolbelt unreachable.`,
+    `⚠️ ${NAME || "This agent"}'s tools could not load — there is a configuration problem the USER must fix. ` +
+    `Tell the user plainly: ${lastUpstreamError || "could not reach Toolbelt."} ` +
+    `To fix it, open Settings → Extensions → ${NAME || "this connector"} and correct the API key and/or Workspace ID, ` +
+    `then start a new chat. (Call this tool to retry once they've fixed it.)`,
   inputSchema: { type: "object", properties: {} },
 });
 // Read-only annotation: clients prompt less for tools marked readOnlyHint. We only mark
@@ -364,7 +391,9 @@ const handlers = {
       serverInfo: { name: NAME ? `apexti-${NAME.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "toolbelt-assistant", title: NAME || "Toolbelt Assistant", version: VERSION },
       instructions:
         `This connector brings the Toolbelt assistant "${NAME || "(name loads on first use)"}" into Claude — ` +
-        `its live tools, skills, and files. To adopt its persona, call the "${PERSONA_TOOL}" tool and fully adopt what it returns.`,
+        `its live tools, skills, and files. To adopt its persona, call the "${PERSONA_TOOL}" tool and fully adopt what it returns. ` +
+        `If this connector exposes ONLY a "${SETUP_TOOL}" or "${STATUS_TOOL}" tool (instead of the agent's many tools), its ` +
+        `configuration is wrong — tell the user to correct the API key and/or Workspace ID in Settings → Extensions → ${NAME || "this connector"}, then start a new chat.`,
     };
   },
   ping: async () => ({}),
@@ -389,6 +418,8 @@ const handlers = {
     if (name === SETUP_TOOL) {
       const key = String(args.api_key || "").trim();
       if (!key) return { isError: true, content: [{ type: "text", text: "No api_key provided." }] };
+      if (!WORKSPACE_ID)
+        return { isError: true, content: [{ type: "text", text: `The Workspace ID is missing and can't be set from chat — it lives in the connector's settings. Tell the user to open Settings → Extensions → ${NAME || "this connector"}, enter the Workspace ID (Toolbelt dashboard URL: workspaceId=…), then start a new chat.` }] };
       try {
         mkdirSync(dirname(KEY_FILE), { recursive: true, mode: 0o700 });
         writeFileSync(KEY_FILE, key + "\n", { mode: 0o600 });

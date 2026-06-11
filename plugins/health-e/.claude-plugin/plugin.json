@@ -1,7 +1,7 @@
 {
   "name": "health-e",
   "description": "Your personal electronic health coaching assistant. Chat-first health coaching grounded in first-principles thinking, authentic nutrition science, and surprising health facts most people were never told. Routing skill — pair with the Health-E connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "author": {
     "name": "Apexti",
     "url": "https://apexti.com"
