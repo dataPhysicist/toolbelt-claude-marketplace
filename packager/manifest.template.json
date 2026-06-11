@@ -1,0 +1,68 @@
+{
+  "manifest_version": "0.3",
+  "name": "toolbelt-assistant",
+  "display_name": "Toolbelt Assistant",
+  "version": "2.7.0",
+  "description": "Bring one live Toolbelt assistant — its instructions, skills, files, and tools — into Claude. One install = one assistant, toggleable as a connector.",
+  "author": {
+    "name": "Apexti",
+    "url": "https://apexti.com"
+  },
+  "homepage": "https://apexti.com",
+  "icon": "icon.png",
+  "compatibility": {
+    "runtimes": {
+      "node": ">=18.0.0"
+    },
+    "platforms": ["darwin", "win32", "linux"]
+  },
+  "prompts": [
+    {
+      "name": "persona",
+      "description": "Act as this Toolbelt assistant — loads its current operating instructions live from Toolbelt via the load_persona tool.",
+      "text": "Call the load_persona tool from this connector now, then fully adopt the operating instructions it returns for the rest of this conversation."
+    }
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "TOOLBELT_API_KEY": "${user_config.api_key}",
+        "TOOLBELT_WORKSPACE_ID": "${user_config.workspace_id}",
+        "TOOLBELT_ASSISTANT_NAME": "${user_config.assistant_name}",
+        "TOOLBELT_BASE_URL": "${user_config.base_url}"
+      }
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "Toolbelt API key",
+      "description": "Your Toolbelt API key (Toolbelt → Settings → Connect to Claude). Stored in your OS keychain; sent as an Authorization: Bearer header, never in a URL.",
+      "sensitive": true,
+      "required": true
+    },
+    "workspace_id": {
+      "type": "string",
+      "title": "Assistant workspace ID",
+      "description": "The Toolbelt workspace ID of the assistant to bring into Claude.",
+      "required": true
+    },
+    "assistant_name": {
+      "type": "string",
+      "title": "Assistant name",
+      "description": "Optional display label (e.g. Chief-of-Staff). Names the persona prompt.",
+      "required": false
+    },
+    "base_url": {
+      "type": "string",
+      "title": "Toolbelt base URL",
+      "description": "Optional. Defaults to https://toolbelt.apexti.com",
+      "required": false,
+      "default": "https://toolbelt.apexti.com"
+    }
+  }
+}
