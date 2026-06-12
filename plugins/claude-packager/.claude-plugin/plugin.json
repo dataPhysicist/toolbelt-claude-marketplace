@@ -1,7 +1,7 @@
 {
   "name": "claude-packager",
   "description": "Builds Claude .mcpb connectors and marketplace plugins for any Toolbelt assistant — from chat. Give it an assistant name; it returns a one-click installer download link. Routing skill — pair with the Claude-Packager connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
-  "version": "2.10.1",
+  "version": "2.10.2",
   "author": {
     "name": "Apexti",
     "url": "https://apexti.com"

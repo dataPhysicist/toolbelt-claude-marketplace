@@ -13,7 +13,7 @@
  * Hard rules: stdio answers initialize instantly (no network first); stdout is protocol
  * (logs -> stderr); crash-proof; instructions fetched live, never embedded.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 
@@ -80,7 +80,15 @@ function requestDownstream(method, params, timeoutMs = CALL_TIMEOUT_MS) {
 // resume it — otherwise every restart silently orphans pending delegations. A 404 on a
 // stale id falls back to a fresh initialize (existing retry path).
 const SESSION_FILE = join(dirname(KEY_FILE), `session-${WORKSPACE_ID}`);
-const readSessionFile = () => { try { return readFileSync(SESSION_FILE, "utf8").trim(); } catch { return ""; } };
+// Only resume a session that's RECENT. A stale session id (old/dead process) is worse than
+// none — it can collide with another process's exclusive SSE stream. Fresh init is cheap.
+const SESSION_TTL_MS = 5 * 60 * 1000;
+const readSessionFile = () => {
+  try {
+    if (Date.now() - statSync(SESSION_FILE).mtimeMs > SESSION_TTL_MS) return ""; // too old → don't resume
+    return readFileSync(SESSION_FILE, "utf8").trim();
+  } catch { return ""; }
+};
 const storedSid = readSessionFile();
 let session = storedSid
   ? { id: storedSid, initialized: true, initializing: null }

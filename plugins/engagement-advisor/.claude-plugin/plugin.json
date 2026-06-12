@@ -1,7 +1,7 @@
 {
   "name": "engagement-advisor",
   "description": "HubSpot Engagements-pipeline deal coach: pulls open deals, reviews activity signals, posts an activity-only weekly digest to Slack, and keeps each deal's Next Step field synced. Routing skill — pair with the Engagement-Advisor connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
-  "version": "2.10.1",
+  "version": "2.10.2",
   "author": {
     "name": "Apexti",
     "url": "https://apexti.com"
