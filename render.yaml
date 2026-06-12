@@ -1,0 +1,18 @@
+# Render Blueprint — deploy the Toolbelt OAuth gateway with one click.
+# In Render: New → Blueprint → connect this repo → it reads this file.
+# GATEWAY_SECRET is auto-generated and persisted by Render; PUBLIC_URL auto-detects from
+# RENDER_EXTERNAL_URL. Nothing else to set for a basic deploy.
+services:
+  - type: web
+    name: toolbelt-oauth-gateway
+    runtime: node
+    plan: starter            # $7/mo keeps it warm; "free" works but cold-starts (~50s)
+    rootDir: gateway
+    buildCommand: ""         # zero dependencies — nothing to build
+    startCommand: node index.js
+    healthCheckPath: /health
+    envVars:
+      - key: GATEWAY_SECRET
+        generateValue: true  # Render generates + persists a strong secret
+      - key: TOOLBELT_BASE_URL
+        value: https://toolbelt.apexti.com

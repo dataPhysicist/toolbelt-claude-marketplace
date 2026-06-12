@@ -1,0 +1,9 @@
+{
+  "name": "toolbelt-oauth-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "OAuth gateway giving Toolbelt MCP endpoints real MCP OAuth — zero dependencies.",
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node index.js" }
+}

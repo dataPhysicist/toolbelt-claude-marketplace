@@ -21,10 +21,14 @@
 import { createServer } from "node:http";
 import { createHash, createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
-const SECRET = process.env.GATEWAY_SECRET;
-if (!SECRET || SECRET.length < 16) { console.error("FATAL: set GATEWAY_SECRET (16+ chars)"); process.exit(1); }
+// Auto-generate a secret if none is set (logged once so you can pin it). Pin it in env
+// for production — rotating it logs everyone out.
+const SECRET = process.env.GATEWAY_SECRET || randomBytes(32).toString("hex");
+if (!process.env.GATEWAY_SECRET) console.error(`[gateway] WARNING: no GATEWAY_SECRET set; generated an ephemeral one. Pin this in env to keep sessions across restarts:\n  GATEWAY_SECRET=${SECRET}`);
 const PORT = Number(process.env.PORT || 8787);
-const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
+// PUBLIC_URL must be the exact public origin (baked into OAuth metadata). Auto-detect on
+// common hosts (Render) so deploy is one fewer manual step.
+const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
 const TOOLBELT = (process.env.TOOLBELT_BASE_URL || "https://toolbelt.apexti.com").replace(/\/+$/, "");
 const AES_KEY = createHash("sha256").update(SECRET).digest();
 const log = (...a) => console.error(`[gateway] ${a.join(" ")}`);
