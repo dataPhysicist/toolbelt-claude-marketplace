@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: fac7249f-02a4-4ccb-be51-bb75c3765cf6
 - description at generation: "Builds Claude .mcpb connectors and marketplace plugins for any Toolbelt assistant — from chat. Give it an assistant name; it returns a one-click installer download link."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

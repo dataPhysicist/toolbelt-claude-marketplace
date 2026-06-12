@@ -233,8 +233,10 @@ async function initUpstream() {
 
 // Standalone GET stream: how the server reaches US (elicitation, notifications).
 let sseAbort = null;
+let sseFails = 0;
 async function startSseListener() {
   if (sseAbort) { try { sseAbort.abort(); } catch { /* ignore */ } }
+  sseFails = 0;
   const mySession = session;
   const ctl = new AbortController();
   sseAbort = ctl;
@@ -244,7 +246,16 @@ async function startSseListener() {
         const headers = { accept: "text/event-stream", authorization: `Bearer ${API_KEY}` };
         if (session.id) headers["mcp-session-id"] = session.id;
         const res = await fetch(MCP_URL, { method: "GET", headers, signal: ctl.signal });
-        if (res.status === 405) return; // server doesn't offer a standalone stream
+        // YIELD on 405 (no standalone stream) or 409 (another stream already owns this
+        // session — e.g. a concurrent/resumed connector process). Do NOT retry: retrying
+        // hammers Toolbelt with "Conflict: Only one SSE stream is allowed per session".
+        // The connector works fine without our own listen stream — elicitation during a
+        // tool call arrives on that call's own POST response stream.
+        if (res.status === 405 || res.status === 409) {
+          res.body?.cancel?.().catch?.(() => {});
+          if (res.status === 409) log("standalone SSE stream owned by another session; running without it");
+          return;
+        }
         if (!res.ok) throw new Error(`GET stream HTTP ${res.status}`);
         const reader = res.body.getReader();
         const dec = new TextDecoder();
@@ -266,7 +277,8 @@ async function startSseListener() {
         }
       } catch (e) {
         if (ctl.signal.aborted || session !== mySession) return;
-        log(`SSE listener dropped (${e.message}); retrying in 2s`);
+        if (++sseFails > 5) { log(`SSE listener giving up after ${sseFails} failures (${e.message}); running without it`); return; }
+        log(`SSE listener dropped (${e.message}); retry ${sseFails}/5 in 2s`);
         await new Promise((r) => setTimeout(r, 2000));
       }
     }

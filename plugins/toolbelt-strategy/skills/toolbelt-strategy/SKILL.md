@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: e3b07a9b-3596-4a65-9180-c6862b621e3c
 - description at generation: "Business strategy expert for Apexti's Toolbelt: investor updates, positioning, GTM, pricing, ICP, partnerships, roadmap, and strategic narrative — grounded in Apexti's strategy context."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

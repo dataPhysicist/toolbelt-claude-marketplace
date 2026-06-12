@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: 79b0e0a0-9c22-485d-982e-7668845b6679
 - description at generation: "An always-on digital Chief of Staff for founders and executives. Turns a noisy inbox, calendar, and meeting stream into a clear operating picture — email triage, meeting prep, daily briefs, and follow-through."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

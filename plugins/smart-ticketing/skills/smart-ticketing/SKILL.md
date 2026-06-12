@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: 4b3e0b1c-6bb9-44b1-81bf-f695f404ddc6
 - description at generation: "A feedback-triage assistant: turns raw bug reports and feature ideas into clean, deduplicated, structured tickets — and keeps the triage board honest."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

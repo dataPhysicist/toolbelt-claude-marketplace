@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: adc2a2b8-158b-4be1-8b16-cb645f572287
 - description at generation: "Authorized penetration-testing and red-team security assistant: web/API/cloud/AI-agent security assessments, vulnerability validation, and remediation-focused reporting — strictly within approved scope and responsible disclosure."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

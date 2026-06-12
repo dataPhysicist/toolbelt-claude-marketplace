@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: 279f3b80-9f2c-441d-a0af-084e84481e36
 - description at generation: "Apexti's design & content source-of-truth: creates brand-consistent Google Slides, HTML pages, dashboards, PDFs, and documents, enforcing the Apexti style guide. Other assistants call it for style-consistent design work."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

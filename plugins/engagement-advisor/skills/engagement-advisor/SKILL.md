@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: 08583ebe-041d-4ebe-bc90-706bd7b6c506
 - description at generation: "HubSpot Engagements-pipeline deal coach: pulls open deals, reviews activity signals, posts an activity-only weekly digest to Slack, and keeps each deal's Next Step field synced."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

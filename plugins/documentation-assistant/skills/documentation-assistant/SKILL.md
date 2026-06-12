@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: 390b55c4-4335-4b9b-9f79-97aeafde3052
 - description at generation: "Turns chat explanations into real product documentation — an expert technical documentarian (Splunk Style Guide: clarity, active voice, why-before-how) for guides, references, and runbooks."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

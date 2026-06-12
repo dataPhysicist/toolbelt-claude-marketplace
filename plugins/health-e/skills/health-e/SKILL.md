@@ -110,7 +110,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: 77503aef-ee54-4144-a4d4-608439f36bbf
 - description at generation: "Your personal electronic health coaching assistant. Chat-first health coaching grounded in first-principles thinking, authentic nutrition science, and surprising health facts most people were never told."
-- generated: 2026-06-11
+- generated: 2026-06-12
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated
