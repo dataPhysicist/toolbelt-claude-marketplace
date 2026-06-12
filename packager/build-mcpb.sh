@@ -14,7 +14,8 @@ set -euo pipefail
 ASSETS_DIR="${ASSETS_DIR:-.}"; OUT="${OUT:-/tmp/output}"; BASE_URL="${BASE_URL:-https://toolbelt.apexti.com}"
 slug=$(printf '%s' "$AGENT_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g')
 prefix="${TOOL_PREFIX:-$(printf '%s' "$AGENT_NAME" | tr -cs '[:alnum:]' ' ' | awk '{for(i=1;i<=NF;i++)printf "%s",tolower(substr($i,1,1))}')_}"
-desc="${AGENT_DESC:-$AGENT_NAME — a Toolbelt assistant.} Powered by Apexti (apexti.com)."
+VER=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('version','?'))" "$ASSETS_DIR/manifest.template.json" 2>/dev/null || echo "?")
+desc="${AGENT_DESC:-$AGENT_NAME — a Toolbelt assistant.} Powered by Apexti (apexti.com) · v$VER"
 
 export PREFIX="$prefix" SLUG="$slug" DESC="$desc" BASE_URL
 work=$(mktemp -d); mkdir -p "$work/server" "$OUT"

@@ -1,6 +1,6 @@
 {
   "name": "apexti-design-content",
-  "description": "Apexti's design & content source-of-truth: creates brand-consistent Google Slides, HTML pages, dashboards, PDFs, and documents, enforcing the Apexti style guide. Other assistants call it for style-consistent design work. Routing skill — pair with the Apexti-Design-Content connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
+  "description": "Apexti's design & content source-of-truth: creates brand-consistent Google Slides, HTML pages, dashboards, PDFs, and documents, enforcing the Apexti style guide. Other assistants call it for style-consistent design work. Routing skill — pair with the Apexti-Design-Content connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
   "version": "2.11.0",
   "author": {
     "name": "Apexti",

@@ -325,7 +325,7 @@ const personaTool = () => {
   return {
     name: PERSONA_TOOL,
     description:
-      `★ ${who} — START HERE. ${SELF_DESC ? SELF_DESC + " " : ""}` +
+      `★ ${who} — START HERE (connector v${VERSION}). ${SELF_DESC ? SELF_DESC + " " : ""}` +
       `Call this tool FIRST whenever the user refers to "${who}" / "my ${who}", ` +
       `${SELF_TRIGGERS ? `or asks about ${SELF_TRIGGERS}, ` : ""}` +
       `or wants to use this assistant. It loads ${who}'s live operating instructions; ` +

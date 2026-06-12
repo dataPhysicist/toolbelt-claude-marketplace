@@ -1,6 +1,6 @@
 {
   "name": "documentation-assistant",
-  "description": "Turns chat explanations into real product documentation — an expert technical documentarian (Splunk Style Guide: clarity, active voice, why-before-how) for guides, references, and runbooks. Routing skill — pair with the Documentation-Assistant connector (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
+  "description": "Turns chat explanations into real product documentation — an expert technical documentarian (Splunk Style Guide: clarity, active voice, why-before-how) for guides, references, and runbooks. Routing skill — pair with the Documentation-Assistant connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com).",
   "version": "2.11.0",
   "author": {
     "name": "Apexti",

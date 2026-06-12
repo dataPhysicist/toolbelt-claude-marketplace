@@ -13,47 +13,47 @@
     {
       "name": "chief-of-staff",
       "source": "./plugins/chief-of-staff",
-      "description": "An always-on digital Chief of Staff for founders and executives. Turns a noisy inbox, calendar, and meeting stream into a clear operating picture — email triage, meeting prep, daily briefs, and follow-through. Routing skill — pair with the Chief-of-Staff connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "An always-on digital Chief of Staff for founders and executives. Turns a noisy inbox, calendar, and meeting stream into a clear operating picture — email triage, meeting prep, daily briefs, and follow-through. Routing skill — pair with the Chief-of-Staff connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "smart-ticketing",
       "source": "./plugins/smart-ticketing",
-      "description": "A feedback-triage assistant: turns raw bug reports and feature ideas into clean, deduplicated, structured tickets — and keeps the triage board honest. Routing skill — pair with the Smart-Ticketing connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "A feedback-triage assistant: turns raw bug reports and feature ideas into clean, deduplicated, structured tickets — and keeps the triage board honest. Routing skill — pair with the Smart-Ticketing connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "health-e",
       "source": "./plugins/health-e",
-      "description": "Your personal electronic health coaching assistant. Chat-first health coaching grounded in first-principles thinking, authentic nutrition science, and surprising health facts most people were never told. Routing skill — pair with the Health-E connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "Your personal electronic health coaching assistant. Chat-first health coaching grounded in first-principles thinking, authentic nutrition science, and surprising health facts most people were never told. Routing skill — pair with the Health-E connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "toolbelt-strategy",
       "source": "./plugins/toolbelt-strategy",
-      "description": "Business strategy expert for Apexti's Toolbelt: investor updates, positioning, GTM, pricing, ICP, partnerships, roadmap, and strategic narrative — grounded in Apexti's strategy context. Routing skill — pair with the Toolbelt-Strategy connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "Business strategy expert for Apexti's Toolbelt: investor updates, positioning, GTM, pricing, ICP, partnerships, roadmap, and strategic narrative — grounded in Apexti's strategy context. Routing skill — pair with the Toolbelt-Strategy connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "scarlett",
       "source": "./plugins/scarlett",
-      "description": "Authorized penetration-testing and red-team security assistant: web/API/cloud/AI-agent security assessments, vulnerability validation, and remediation-focused reporting — strictly within approved scope and responsible disclosure. Routing skill — pair with the Scarlett connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "Authorized penetration-testing and red-team security assistant: web/API/cloud/AI-agent security assessments, vulnerability validation, and remediation-focused reporting — strictly within approved scope and responsible disclosure. Routing skill — pair with the Scarlett connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "apexti-design-content",
       "source": "./plugins/apexti-design-content",
-      "description": "Apexti's design & content source-of-truth: creates brand-consistent Google Slides, HTML pages, dashboards, PDFs, and documents, enforcing the Apexti style guide. Other assistants call it for style-consistent design work. Routing skill — pair with the Apexti-Design-Content connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "Apexti's design & content source-of-truth: creates brand-consistent Google Slides, HTML pages, dashboards, PDFs, and documents, enforcing the Apexti style guide. Other assistants call it for style-consistent design work. Routing skill — pair with the Apexti-Design-Content connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "engagement-advisor",
       "source": "./plugins/engagement-advisor",
-      "description": "HubSpot Engagements-pipeline deal coach: pulls open deals, reviews activity signals, posts an activity-only weekly digest to Slack, and keeps each deal's Next Step field synced. Routing skill — pair with the Engagement-Advisor connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "HubSpot Engagements-pipeline deal coach: pulls open deals, reviews activity signals, posts an activity-only weekly digest to Slack, and keeps each deal's Next Step field synced. Routing skill — pair with the Engagement-Advisor connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "documentation-assistant",
       "source": "./plugins/documentation-assistant",
-      "description": "Turns chat explanations into real product documentation — an expert technical documentarian (Splunk Style Guide: clarity, active voice, why-before-how) for guides, references, and runbooks. Routing skill — pair with the Documentation-Assistant connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "Turns chat explanations into real product documentation — an expert technical documentarian (Splunk Style Guide: clarity, active voice, why-before-how) for guides, references, and runbooks. Routing skill — pair with the Documentation-Assistant connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     },
     {
       "name": "claude-packager",
       "source": "./plugins/claude-packager",
-      "description": "Builds Claude .mcpb connectors and marketplace plugins for any Toolbelt assistant — from chat. Give it an assistant name; it returns a one-click installer download link. Routing skill — pair with the Claude-Packager connector (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
+      "description": "Builds Claude .mcpb connectors and marketplace plugins for any Toolbelt assistant — from chat. Give it an assistant name; it returns a one-click installer download link. Routing skill — pair with the Claude-Packager connector v2.11.0 (.mcpb or gateway URL). Powered by Apexti (apexti.com)."
     }
   ]
 }
