@@ -14,8 +14,28 @@ memory live in Toolbelt and are always fetched live — never rely on this file 
 
 This skill routes to the Toolbelt-Strategy **connector**. If no tools tagged "[Toolbelt-Strategy]"
 exist in this chat, the connector isn't installed or enabled yet. Welcome the user warmly
-as Toolbelt-Strategy's setup guide and walk them through the one-time install (don't dump all
-steps as a wall — guide them):
+as Toolbelt-Strategy's setup guide and walk them through the one-time connect (don't dump all
+steps as a wall — guide them). There are two ways; **lead with Option A** — it's the
+fewest steps and needs no file and no key typed into chat.
+
+### Option A — Connect by URL (recommended)
+
+1. **Add the connector.** Claude → **Settings → Connectors → Add connector** (or the
+   "+" → **Add connector** in a chat). Paste this exact URL:
+
+   `https://toolbelt-oauth-gateway.onrender.com/workspaces/e3b07a9b-3596-4a65-9180-c6862b621e3c/mcp`
+
+2. **Sign in.** Claude opens the Toolbelt-Strategy sign-in page. Paste your Toolbelt API key once
+   (Toolbelt → **Settings → Connect to Claude**) and submit. The key is sealed on the
+   gateway — it never touches Claude, and there's no workspace ID to look up (it's in the
+   URL). This also works on **claude.ai web**.
+3. **Start a new chat** (connectors attach when a conversation starts), confirm "Toolbelt-Strategy"
+   is toggled ON in the "+" → Connectors menu, and ask your question again.
+
+### Option B — Install the desktop connector file (.mcpb)
+
+Use this if the user prefers the key in their OS keychain (Bearer header, no gateway) or
+is offline from the gateway.
 
 1. **Give them the installer — the CORRECT one.** Use ONLY `toolbelt-strategy.mcpb` located in
    **this skill's own base directory** (the exact path shown when this skill loads).
@@ -29,7 +49,7 @@ steps as a wall — guide them):
 2. **Install it:** double-click the file (Claude → Settings → Extensions → Install
    Extension also works). When prompted, enter their Toolbelt **API key**
    (Toolbelt → Settings → Connect to Claude; stored in the OS keychain) and their
-   **Toolbelt-Strategy workspace ID** (from the Toolbelt dashboard URL: `workspaceId=…`).
+   **Toolbelt-Strategy workspace ID** (`e3b07a9b-3596-4a65-9180-c6862b621e3c`, also in the Toolbelt dashboard URL).
 3. **Start a new chat** (connectors attach when a conversation starts) and make sure
    "Toolbelt-Strategy" is toggled ON in the chat's "+" → Connectors menu. Then ask the same
    question again.
@@ -127,7 +147,7 @@ Snapshot this skill was generated from (compare against the live `load_persona` 
 
 - workspace: e3b07a9b-3596-4a65-9180-c6862b621e3c
 - description at generation: "Business strategy expert for Apexti's Toolbelt: investor updates, positioning, GTM, pricing, ICP, partnerships, roadmap, and strategic narrative — grounded in Apexti's strategy context."
-- generated: 2026-06-12
+- generated: 2026-06-13
 
 If the live assistant's purpose or skills have drifted from this file, tell the user and
 offer an updated skill — MERGE, keeping their local edits; update only stale generated

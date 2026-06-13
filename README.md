@@ -81,36 +81,41 @@ conversation, and see exactly which agent did what in the tool-call log.
 
 Each agent ships as **two small pieces** that work together:
 
-1. **The connector** — a one-click `.mcpb` desktop extension (in `dist/`). It proxies the
-   agent's live Toolbelt MCP endpoint: persona loaded live, read-only tools annotated so
-   Claude prompts less, and every tool **namespaced with the agent's initials**
+1. **The connector** — how the agent's live tools reach Claude. Two interchangeable forms:
+   - **By URL (recommended):** add `https://toolbelt-oauth-gateway.onrender.com/workspaces/<id>/mcp`
+     as a remote connector and sign in once on a web page. No file, no key typed into
+     Claude, no workspace ID to look up. Works in Desktop, Cowork, **and claude.ai web**.
+     Deploy [`gateway/`](gateway/README.md) once to get the URL.
+   - **By file:** a one-click `.mcpb` desktop extension (in `dist/`) that stores your API
+     key in the **OS keychain** and sends it as a Bearer header — no gateway needed.
+
+   Either way the agent's persona loads live, read-only tools are annotated so Claude
+   prompts less, and every tool is **namespaced with the agent's initials**
    (`cos_get_calendar`, `st_wrench_execute`) so any number of agents coexist without
-   tool-name collisions. Your API key goes into the **OS keychain** at install. Because
-   it's a regular connector, each agent gets its own **on/off toggle in every chat's "+"
-   menu** and fully inspectable tool calls.
+   collisions. Each agent gets its own **on/off toggle in every chat's "+" menu** and
+   fully inspectable tool calls.
 2. **The routing skill** — a plugin from this marketplace. It teaches Claude *when* to
-   use the agent ("what's on my calendar?" → Chief-of-Staff) without being told, ships
-   the connector installer inside it, and updates automatically when this repo changes.
+   use the agent ("what's on my calendar?" → Chief-of-Staff) without being told, hands
+   the user the connect URL (or the bundled `.mcpb`) on first run, and updates
+   automatically when this repo changes.
 
-## Install (Claude Desktop / Cowork)
+## Install (Claude Desktop / Cowork / web)
 
-1. **Customize → Plugins → "+" → Add marketplace** → enter
+1. **Add the routing skill.** Customize → Plugins → "+" → Add marketplace → enter
    `dataPhysicist/toolbelt-for-claude`, then install the agent's plugin (e.g. **Chief of
-   staff**).
-2. Start a chat and ask something in the agent's lane — *"What's on my calendar
-   today?"* On first run the skill hands you the bundled connector installer right in
-   the chat: double-click it, enter your Toolbelt API key (Toolbelt → Settings → Connect
-   to Claude; stored in the OS keychain).
+   staff**). *(Skip this if you only want the connector — the connector self-routes; the
+   skill just makes "talk to my Chief-of-Staff" phrasing work proactively.)*
+2. **Connect the agent — by URL (recommended).** Settings → **Connectors → Add
+   connector**, paste `https://toolbelt-oauth-gateway.onrender.com/workspaces/<id>/mcp`
+   (the skill hands you the exact per-agent URL on first run), and **sign in** with your
+   Toolbelt API key once on the page that opens. No key touches Claude; no workspace ID
+   to type. This is the only path that also works on **claude.ai web**.
 3. Start a **new** conversation (connectors attach at chat start), confirm the agent is
-   toggled on in the "+" → Connectors menu, and ask again.
+   toggled on in the "+" → Connectors menu, and ask away.
 
-(Manual alternative: grab the `.mcpb` straight from [`dist/`](dist/) and double-click it
-before installing the plugin.)
-
-Prefer OAuth over API keys (e.g. distributing to a team or using claude.ai web)? Deploy
-[`gateway/`](gateway/README.md) and add
-`https://<your-gateway>/workspaces/<id>/mcp` as a remote connector instead of the
-`.mcpb` — users sign in on a web page; no key ever touches Claude.
+**Offline / keychain alternative:** instead of step 2, double-click the agent's `.mcpb`
+(bundled in the skill on first run, or grab it from [`dist/`](dist/)) and enter your API
+key + workspace ID at install. Same agent, key held in the OS keychain.
 
 Claude Code users: `claude plugin marketplace add dataPhysicist/toolbelt-for-claude`,
 then `claude plugin install chief-of-staff@apexti-toolbelt`, plus the connector via
@@ -123,8 +128,8 @@ plugins/chief-of-staff/        Chief-of-Staff routing skill (skill-only plugin)
 plugins/smart-ticketing/       Smart-Ticketing routing skill (skill-only plugin)
 plugins/toolbelt-get-started/  Org onboarding plugin (connect, list agents, route work)
 gateway/                       OAuth gateway: real MCP OAuth for Toolbelt, zero server changes
+                               → the connect URL <gateway>/workspaces/<id>/mcp (recommended path)
 dist/                          Prebuilt installers: per-agent .mcpb connectors + .plugin skills
-desktop-extension/             Legacy single-bundle extension (superseded by dist/*.mcpb)
 ```
 
 More agents are added by registering them in the generator's roster and rebuilding —

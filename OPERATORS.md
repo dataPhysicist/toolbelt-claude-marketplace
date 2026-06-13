@@ -59,21 +59,29 @@ message. Nothing to redeploy.
 
 ## What your end user does (copy-paste this to customers)
 
-> 1. In Claude Desktop: **Customize → Plugins → "+" → Add marketplace** → enter
->    `dataPhysicist/toolbelt-for-claude`
-> 2. Install the agent (e.g. **Chief of staff**) and start a chat — ask it anything in
->    its wheelhouse. It will hand you its connector installer: double-click, paste your
->    Toolbelt API key (Toolbelt → Settings → Connect to Claude; it's stored in your
->    Mac's keychain), start a new chat, and ask again.
-> 3. That's it. Toggle the agent on/off per chat in the "+" → Connectors menu.
+> 1. In Claude: **Customize → Plugins → "+" → Add marketplace** → enter
+>    `dataPhysicist/toolbelt-for-claude`, then install the agent (e.g. **Chief of staff**).
+> 2. **Connect it by URL.** Settings → **Connectors → Add connector** → paste the agent's
+>    URL (your skill hands it to you on first run; it looks like
+>    `https://toolbelt-oauth-gateway.onrender.com/workspaces/<id>/mcp`). **Sign in** with
+>    your Toolbelt API key once on the page that opens — done. Works on claude.ai web too.
+> 3. Start a new chat, toggle the agent on in the "+" → Connectors menu, and ask away.
 
-Each user enters their **own** Toolbelt key once; it's shared by all your agents on
-their machine (`~/.toolbelt/api_key` + keychain). Never distribute a shared key.
+Each user signs in with their **own** Toolbelt key (sealed on the gateway, never in
+Claude). Per-user access and IT/Security's server-side tool policy both apply. Never
+distribute a shared key.
 
-**Upgrade path — OAuth sign-in (no keys at all):** deploy [`gateway/`](gateway/README.md)
-once on any HTTPS host, and connectors become a URL with a browser sign-in — also the
-path to claude.ai web support. Recommended once you're distributing beyond a handful of
-users.
+**Offline / keychain alternative:** instead of step 2, have the user double-click the
+agent's `.mcpb` (bundled in the skill, or in [`dist/`](dist/)) and enter their key +
+workspace ID at install. The key lives in their OS keychain; no gateway involved. Good for
+a single machine; the URL path is better for distributing to a team and is the only one
+that works on claude.ai web.
+
+**Gateway is the recommended distribution path.** Deploy [`gateway/`](gateway/README.md)
+once on any HTTPS host and every agent becomes one URL —
+`https://<gateway>/workspaces/<that agent's workspace id>/mcp`. Hand customers the URLs
+for the agents they should have; their employees add the connector and sign in with their
+own keys. (`render.yaml` makes this a ~5-minute Render deploy.)
 
 ## Governed approvals (a selling point for IT/Security)
 
