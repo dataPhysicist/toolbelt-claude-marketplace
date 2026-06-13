@@ -55,7 +55,8 @@ skills for the best in-chat experience.
 - Access tokens (30d) + refresh tokens (90d) carry the sealed key; the gateway holds no state.
 - Global revocation: rotate `GATEWAY_SECRET`. Per-user revocation: rotate that user's
   Toolbelt API key in Toolbelt.
-- The sign-in page validates the key against Toolbelt and rejects 401/403 keys.
+- The sign-in page validates the key against Toolbelt (`GET /api/workspaces`) and rejects
+  only keys Toolbelt reports invalid (401).
 - When Toolbelt ships native OAuth, swap the key-entry page for a real Toolbelt login and
   nothing changes for users.
 
