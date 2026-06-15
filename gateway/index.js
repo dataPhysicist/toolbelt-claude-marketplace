@@ -114,6 +114,22 @@ function rewriteMessage(msg) {
     } else { r.instructions = ROUTE; changed = true; }
     return changed;
   }
+  // tools/list: drop intra-connector duplicate tool names. Cross-connector duplicates are
+  // fine (the client namespaces per connector), but Toolbelt can aggregate two services
+  // exposing the SAME name in one workspace, and a duplicate registration can break the
+  // connector. Keep the first, drop the rest (mirrors the .mcpb proxy's dedupe).
+  if (Array.isArray(r.tools)) {
+    const seen = new Set();
+    const deduped = r.tools.filter((t) => {
+      const nm = t && typeof t.name === "string" ? t.name : null;
+      if (nm === null) return true;
+      if (seen.has(nm)) return false;
+      seen.add(nm);
+      return true;
+    });
+    if (deduped.length !== r.tools.length) { r.tools = deduped; return true; }
+    return false;
+  }
   // Org-policy "ask" gate: surface needsConfirmation as a clear human-approval request.
   if (r.needsConfirmation && r.confirmationId) {
     const name = r.toolName || "this action";
